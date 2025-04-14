@@ -1,0 +1,20 @@
+# Build
+build/
+CMakeFiles/
+CMakeCache.txt
+
+# IDEs
+.vscode/
+*.user
+*.suo
+
+# External dependencies (if not using submodules)
+external/
+
+# Binaries
+*.exe
+*.out
+*.a
+*.lib
+*.dll
+*.so
