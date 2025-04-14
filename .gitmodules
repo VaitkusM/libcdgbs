@@ -1,0 +1,12 @@
+[submodule "external/eigen"]
+	path = external/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "external/Triangle"]
+	path = external/Triangle
+	url = https://github.com/wo80/Triangle.git
+[submodule "external/OpenMesh"]
+	path = external/OpenMesh
+	url = https://www.graphics.rwth-aachen.de:9000/OpenMesh/OpenMesh.git
+[submodule "external/libgeom"]
+	path = external/libgeom
+	url = https://github.com/salvipeter/libgeom.git
