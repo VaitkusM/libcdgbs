@@ -14,8 +14,10 @@ set(TRIANGLE_BINARY_DIR ${CMAKE_BINARY_DIR}/triangle_build)
 add_subdirectory(${TRIANGLE_SOURCE_DIR} ${TRIANGLE_BINARY_DIR})
 
 set(LIBGEOM_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libgeom)
+set(OPENMESH_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/OpenMesh/src)
 
 # Avoid building tools with Qt and custom macros
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(OPENMESH_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(OPENMESH_BUILD_DECIMATER OFF CACHE BOOL "" FORCE)
 set(OPENMESH_BUILD_NORMAL_DEVIATION OFF CACHE BOOL "" FORCE)
@@ -33,11 +35,12 @@ include_directories(include)
 
 file(GLOB_RECURSE LIBCDGBS_SRC "src/*.cpp")
 
-add_library(libcdgbs ${LIBCDGBS_SRC})
+add_library(libcdgbs STATIC ${LIBCDGBS_SRC})
 
 # 🔧 Add include paths for Triangle, including generated headers
 target_include_directories(libcdgbs
     PRIVATE
+        ${OPENMESH_SOURCE_DIR}
         ${LIBGEOM_SOURCE_DIR}
         ${TRIANGLE_SOURCE_DIR}/Triangle
         ${TRIANGLE_BINARY_DIR}/Triangle  # This is where triangle_export.h lives
@@ -57,6 +60,7 @@ add_executable(libcdgbs_test tests/main_test.cpp)
 # 🔧 Also add include path for generated headers here
 target_include_directories(libcdgbs_test
     PRIVATE
+        ${OPENMESH_SOURCE_DIR}
         ${LIBGEOM_SOURCE_DIR}
         ${TRIANGLE_BINARY_DIR}/Triangle
 )
