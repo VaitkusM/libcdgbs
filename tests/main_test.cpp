@@ -1,7 +1,8 @@
 #include "libcdgbs/Example.hpp"
 
 int main() {
-    libcdgbs::say_hello();
-    libcdgbs::m.setIdentity(4,5);
+    libcdgbs::Example example;
+    example.say_hello();
+    example.m.setIdentity(4,5);
     return 0;
 }
