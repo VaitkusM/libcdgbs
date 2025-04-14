@@ -9,7 +9,20 @@ CMakeCache.txt
 *.suo
 
 # External dependencies (if not using submodules)
-external/
+# Ignore everything in external/
+# external/*
+
+# But allow these specific submodules
+!external/eigen/
+!external/Triangle/
+!external/OpenMesh/
+!external/libgeom/
+
+# Also allow their contents recursively
+!external/eigen/**
+!external/Triangle/**
+!external/OpenMesh/**
+!external/libgeom/**
 
 # Binaries
 *.exe
