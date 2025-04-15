@@ -1,6 +1,7 @@
 #pragma once
 #include <geometry.hh>
 #include "Mesh.hpp"
+#include <Eigen/Eigen>
 
 namespace libcdgbs {
   class SurfGBS {
@@ -20,7 +21,7 @@ namespace libcdgbs {
     Mesh meshDomain;
     Mesh meshSurface;
 
-    std::vector<std::vector<Geometry::BSCurve> > domain_boundary_curves;
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > domain_boundary_curves;
 
     size_t num_loops;
     std::vector<size_t> num_sides;

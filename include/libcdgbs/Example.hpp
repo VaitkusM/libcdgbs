@@ -1,10 +1,16 @@
 #pragma once
-#include <Eigen/Dense>
+
+extern "C" {
 #include <triangle.h>
 #include <triangle_api.h>
+}
+#undef dest
+#undef mark
+
 #include <geometry.hh>
 #include "Mesh.hpp"
 #include "SurfGBS.hpp"
+#include <Eigen/Dense>
 
 namespace libcdgbs {
     class Example {

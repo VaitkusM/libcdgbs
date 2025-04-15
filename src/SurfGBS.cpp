@@ -1,6 +1,12 @@
 #include "libcdgbs/SurfGBS.hpp"
+#include "libcdgbs/LoopFlattener.hpp"
 
 using namespace libcdgbs;
+using Vec3 = Eigen::Vector3d;
+using Vec2 = Eigen::Vector2d;
+using SubCurve3D = std::vector<Vec3>;
+using Curve3D = std::vector<SubCurve3D>;
+using Curves3D = std::vector<Curve3D>;
 
 SurfGBS::SurfGBS()
 {
@@ -24,8 +30,44 @@ int SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs)
 
 bool SurfGBS::compute_domain_boundary()
 {
-  //ToDo
+  Curves3D points(num_loops);
+  Curves3D normals(num_loops);
+  for(size_t loop = 0; loop < num_loops; loop) {
+    points[loop].resize(num_sides[loop]);
+    normals[loop].resize(num_sides[loop]);
+    for(size_t side = 0; side < num_sides[loop]; ++side) {
+      const auto &rib = ribbons[loop][side];
+      const size_t res = side_res[loop][side];
+      points[loop][side].resize(res);
+      normals[loop][side].resize(res);
+      for(size_t i = 0; i < res; ++i) {
+        const double u = double(i)/res;
+        auto pt = rib.eval(0.0, u);
+        points[loop][side][i] = {pt[0], pt[1], pt[2]};
 
+        auto span = rib.basisU().findSpan(u);
+        Geometry::DoubleMatrix Bdu, Bdv;
+        rib.basisU().basisFunctionDerivatives(span, u,   1, Bdu);
+        rib.basisV().basisFunctionDerivatives(span, 0.0, 1, Bdv);
+        Geometry::Point3D du(0.0, 0.0, 0.0), dv(0.0, 0.0, 0.0);
+        for (size_t j = 0; j < Bdu[1].size(); ++j) {
+          for(size_t k = 0; k < Bdv[1].size(); ++k) {
+            du += rib.controlPoint(j, k) * Bdu[1][j] *Bdv[0][k] ;
+          }
+        }
+        for (size_t j = 0; j < Bdu[1].size(); ++j) {
+          for (size_t k = 0; k < Bdv[1].size(); ++k) {
+            dv += rib.controlPoint(j, k) * Bdu[0][j] * Bdv[1][k];
+          }
+        }
+        auto nn = (du^dv).normalized();
+        normals[loop][side][i] = { nn[0], nn[1], nn[2] };
+      }
+    }
+  }
+
+  domain_boundary_curves = LoopFlattener::developCurves(points, normals);
+  
   return true;
 }
 
