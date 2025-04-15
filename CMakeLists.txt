@@ -30,6 +30,7 @@ set(OPENMESH_BUILD_UTILS OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/OpenMesh)
 add_subdirectory(external/libgeom)
 
+
 # ---- Your Library ----
 include_directories(include)
 
@@ -45,6 +46,11 @@ target_include_directories(libcdgbs
         ${TRIANGLE_SOURCE_DIR}/Triangle
         ${TRIANGLE_BINARY_DIR}/Triangle  # This is where triangle_export.h lives
 )
+
+if(WIN32)
+target_compile_definitions(libcdgbs PRIVATE NOMINMAX)
+endif()
+
 
 # 🔗 Link libraries
 target_link_libraries(libcdgbs
@@ -64,5 +70,9 @@ target_include_directories(libcdgbs_test
         ${LIBGEOM_SOURCE_DIR}
         ${TRIANGLE_BINARY_DIR}/Triangle
 )
+
+if(WIN32)
+target_compile_definitions(libcdgbs_test PRIVATE NOMINMAX)
+endif()
 
 target_link_libraries(libcdgbs_test libcdgbs)
