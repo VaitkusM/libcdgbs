@@ -42,24 +42,14 @@ bool SurfGBS::compute_domain_boundary()
       normals[loop][side].resize(res);
       for(size_t i = 0; i < res; ++i) {
         const double u = double(i)/res;
-        auto pt = rib.eval(0.0, u);
-        points[loop][side][i] = {pt[0], pt[1], pt[2]};
 
-        auto span = rib.basisU().findSpan(u);
-        Geometry::DoubleMatrix Bdu, Bdv;
-        rib.basisU().basisFunctionDerivatives(span, u,   1, Bdu);
-        rib.basisV().basisFunctionDerivatives(span, 0.0, 1, Bdv);
-        Geometry::Point3D du(0.0, 0.0, 0.0), dv(0.0, 0.0, 0.0);
-        for (size_t j = 0; j < Bdu[1].size(); ++j) {
-          for(size_t k = 0; k < Bdv[1].size(); ++k) {
-            du += rib.controlPoint(j, k) * Bdu[1][j] *Bdv[0][k] ;
-          }
-        }
-        for (size_t j = 0; j < Bdu[1].size(); ++j) {
-          for (size_t k = 0; k < Bdv[1].size(); ++k) {
-            dv += rib.controlPoint(j, k) * Bdu[0][j] * Bdv[1][k];
-          }
-        }
+        Geometry::VectorMatrix duv;
+        auto pt = rib.eval(u, 0.0, 1, duv);
+
+
+        points[loop][side][i] = {pt[0], pt[1], pt[2]};
+        auto du = duv[1][0];
+        auto dv = duv[0][1];
         auto nn = (du^dv).normalized();
         normals[loop][side][i] = { nn[0], nn[1], nn[2] };
       }
