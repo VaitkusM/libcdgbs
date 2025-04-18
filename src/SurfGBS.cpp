@@ -77,20 +77,30 @@ bool SurfGBS::compute_local_parameters()
 
 bool SurfGBS::compute_blend_functions()
 {
+  blend_functions.clear();
+  blend_functions.resize(meshDomain.n_vertices());
   for (const auto v : meshDomain.vertices()) {
+    auto& Bf = blend_functions[v.idx()];
+    Bf.resize(num_loops);
     for (size_t loop = 0; loop < num_loops; ++loop) {
+      Bf[loop].resize(num_sides[loop]);
       for (size_t side = 0; side < num_sides[loop]; ++side) {
+        Bf[loop][side].resize(num_rows[loop][side], std::vector<double>(num_cols[loop][side]));
+
         const auto s = s_coords[v.idx()][loop][side];
         const auto h = h_coords[v.idx()][loop][side];
 
-        Geometry::DoubleVector Bh, Bs;
-        ribbons[loop][side].basisU().basisFunctions(0, s, Bs);
-        ribbons[loop][side].basisV().basisFunctions(0, h, Bh);
+        const auto& Bu = ribbons[loop][side].basisU();
+        const auto& Bv = ribbons[loop][side].basisV();
 
+        size_t span_u = Bu.findSpan(s), span_v = Bv.findSpan(h);
+        Geometry::DoubleVector Bh, Bs;
+        Bu.basisFunctions(0, s, Bs);
+        Bv.basisFunctions(0, h, Bh);
 
         for (size_t row = 0; row < num_rows[loop][side]; ++row) {
           for (size_t col = 0; col < num_cols[loop][side]; ++col) {
-            blend_functions[v.idx()][loop][side][row][col] =
+            Bf[loop][side][row][col] =
               get_mu(v, loop, side, row, col) * Bs[col] * Bh[row];
           }
         }
@@ -115,7 +125,7 @@ bool SurfGBS::evaluate_mesh(bool reset)
         for (size_t row = 0; row < num_rows[loop][side]; ++row) {
           for (size_t col = 0; col < num_cols[loop][side]; ++col) {
             const auto Bf = blend_functions[v.idx()][loop][side][row][col];
-            const auto cp = OpenMesh::Vec3d(ribbons[loop][side].controlPoint(row, col).data());
+            const auto cp = OpenMesh::Vec3d(ribbons[loop][side].controlPoint(col, row).data());
             pt += Bf * cp;
           }
         }
