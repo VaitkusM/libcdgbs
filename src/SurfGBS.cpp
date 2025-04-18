@@ -1,5 +1,6 @@
 #include "libcdgbs/SurfGBS.hpp"
 #include "libcdgbs/LoopFlattener.hpp"
+#include "libcdgbs/TriangleWrapper.hpp"
 
 using namespace libcdgbs;
 using Vec3 = Eigen::Vector3d;
@@ -63,8 +64,8 @@ bool SurfGBS::compute_domain_boundary()
 
 bool SurfGBS::compute_domain_mesh()
 {
-  //ToDo
-
+  auto triangle_wrapper = TriangleWrapper();
+  meshSurface = triangle_wrapper.triangulate(domain_boundary_curves, 20.0);
   return true;
 }
 

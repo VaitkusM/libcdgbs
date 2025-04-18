@@ -55,6 +55,7 @@ endif()
 # 🔗 Link libraries
 target_link_libraries(libcdgbs
     triangle
+    triangle-api
     OpenMeshCore
     OpenMeshTools
     geom
