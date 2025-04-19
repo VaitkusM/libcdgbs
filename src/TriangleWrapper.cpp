@@ -23,9 +23,12 @@ namespace libcdgbs {
     std::map<std::pair<double, double>, int> index;
     std::vector<std::array<double, 2>> pts2D;
     std::vector<std::pair<int, int>> segs;
-
+    std::vector<Eigen::Vector3d> holes;
     // Flatten loops → sub‑curves → edges
-    for (auto const& loop : loops) {
+    for (size_t loop_idx = 0; loop_idx < loops.size(); ++loop_idx) {
+      auto const& loop = loops[loop_idx];
+      Eigen::Vector3d cog(0.0, 0.0, 0.0);
+      size_t num_pts = 0;
       for (size_t si = 0; si < loop.size(); ++si) {
         // make a local copy so we can pop safely
         auto sub = loop[si];
@@ -33,6 +36,11 @@ namespace libcdgbs {
         // if (si + 1 < loop.size() && !sub.empty()) {
         //   sub.pop_back();
         // }
+        for (size_t i = 0; i < sub.size() - 1; ++i) {
+          cog += sub[i];
+          ++num_pts;
+        }
+
         for (size_t i = 0; i + 1 < sub.size() - 1; ++i) {
           auto const& P = sub[i], & Q = sub[i + 1];
           std::pair<double, double> a{ P.x(),P.y() }, b{ Q.x(),Q.y() };
@@ -57,6 +65,10 @@ namespace libcdgbs {
             segs.emplace_back(ib, idx);
           }
         }
+      }
+      cog /= num_pts;
+      if(loop_idx > 0) { // skip first loop
+        holes.push_back(cog);
       }
       // // close the loop
       // if (!loop.empty() && !loop.front().empty()) {
@@ -83,6 +95,13 @@ namespace libcdgbs {
     for (int i = 0; i < in.numberofsegments; ++i) {
       in.segmentlist[2 * i] = segs[i].first;
       in.segmentlist[2 * i + 1] = segs[i].second;
+    }
+
+    in.numberofholes = int(holes.size());
+    in.holelist = (REAL*)std::malloc(in.numberofholes * 2 * sizeof(REAL));
+    for (int i = 0; i < in.numberofholes; ++i) {
+      in.holelist[2 * i] = holes[i].x();
+      in.holelist[2 * i + 1] = holes[i].y();
     }
 
     // 1) triangulate using the wo80 API
