@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD 17)
 # Eigen (header-only)
 include_directories(external/eigen)
 
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
 # Triangle (build subdir with known output location)
 set(TRIANGLE_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/Triangle/src)
 set(TRIANGLE_BINARY_DIR ${CMAKE_BINARY_DIR}/triangle_build)
@@ -17,7 +19,7 @@ set(LIBGEOM_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libgeom)
 set(OPENMESH_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/OpenMesh/src)
 
 # Avoid building tools with Qt and custom macros
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
 set(OPENMESH_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(OPENMESH_BUILD_DECIMATER OFF CACHE BOOL "" FORCE)
 set(OPENMESH_BUILD_NORMAL_DEVIATION OFF CACHE BOOL "" FORCE)

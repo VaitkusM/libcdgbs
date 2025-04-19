@@ -58,17 +58,45 @@ bool SurfGBS::readMGBS(const std::string& filename)
 
       // read the (nCtrlV × nCtrlU) grid of 3D points
       Geometry::PointVector ctrl;
-      ctrl.reserve(num_cols[loop][side] * num_rows[loop][side]);
+      ctrl.resize(num_cols[loop][side] * num_rows[loop][side]);
       for (size_t i = 0; i < num_rows[loop][side]; ++i) {
         for (size_t j = 0; j < num_cols[loop][side]; ++j) {
           double x, y, z;
           in >> x >> y >> z;
-          ctrl.emplace_back(x, y, z);
+          ctrl[j*num_rows[loop][side] + i] = {x, y, z};
         }
       }
 
       // construct & store the B‑spline surface
       ribbons[loop].emplace_back(degU, degV, knotsU, knotsV, ctrl);
+    }
+  }
+
+  int sideRes, meshRes;
+  // read the last two ints
+  if (!(in >> sideRes >> meshRes)) {
+    std::cerr << "Missing side/mesh resolution\n";
+    return false;
+  }
+  side_res.clear();
+  side_res.resize(num_loops);
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    side_res[loop].resize(num_sides[loop], sideRes);
+  }
+
+  domain_boundary_curves.clear();
+  domain_boundary_curves.resize(num_loops);
+  for(size_t loop = 0; loop < num_loops; ++loop) {
+    domain_boundary_curves[loop].resize(num_sides[loop]);
+    for(size_t side = 0; side < num_sides[loop]; ++side) {
+      domain_boundary_curves[loop][side].resize(side_res[loop][side]);
+      const auto& rib = ribbons[loop][side];
+      for(size_t i = 0; i < side_res[loop][side]; ++i) {
+        auto u = double(i)/(side_res[loop][side] - 1);
+        auto pt = rib.eval(u, 0.0);
+        domain_boundary_curves[loop][side][i] = { pt[0], pt[1], pt[2] };
+        std::cout << domain_boundary_curves[loop][side][i][0] << ", "  << domain_boundary_curves[loop][side][i][1] << std::endl;
+      }
     }
   }
 

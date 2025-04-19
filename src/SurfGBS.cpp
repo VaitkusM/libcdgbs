@@ -65,7 +65,7 @@ bool SurfGBS::compute_domain_boundary()
 bool SurfGBS::compute_domain_mesh()
 {
   auto triangle_wrapper = TriangleWrapper();
-  meshSurface = triangle_wrapper.triangulate(domain_boundary_curves, 20.0);
+  meshDomain = triangle_wrapper.triangulate(domain_boundary_curves, side_res.front().front());
   return true;
 }
 

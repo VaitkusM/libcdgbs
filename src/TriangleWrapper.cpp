@@ -26,26 +26,47 @@ namespace libcdgbs {
 
     // Flatten loops → sub‑curves → edges
     for (auto const& loop : loops) {
-      for (auto const& sub : loop) {
-        for (size_t i = 0; i + 1 < sub.size(); ++i) {
+      for (size_t si = 0; si < loop.size(); ++si) {
+        // make a local copy so we can pop safely
+        auto sub = loop[si];
+        // if this isn’t the last subcurve in the loop, drop its last point
+        // if (si + 1 < loop.size() && !sub.empty()) {
+        //   sub.pop_back();
+        // }
+        for (size_t i = 0; i + 1 < sub.size() - 1; ++i) {
           auto const& P = sub[i], & Q = sub[i + 1];
           std::pair<double, double> a{ P.x(),P.y() }, b{ Q.x(),Q.y() };
           // get or create index for a
           int ia = index.count(a) ? index[a] : (index[a] = pts2D.size(), pts2D.push_back({ a.first,a.second }), int(pts2D.size() - 1));
           // same for b
           int ib = index.count(b) ? index[b] : (index[b] = pts2D.size(), pts2D.push_back({ b.first,b.second }), int(pts2D.size() - 1));
+
+          if (si > 0 && i == 0) { // connecting to previous subcurve
+            auto prevP = loop[si - 1][loop[si - 1].size() - 2];
+            std::pair<double, double> key{ prevP.x(), prevP.y() };
+            int idx = index[key];
+            segs.emplace_back(idx, ia);
+          }
+
           segs.emplace_back(ia, ib);
+
+          if(si == loop.size() - 1 && i == sub.size() - 3) { // closing loop at last subcurve
+            auto nextP = loop.front().front();
+            std::pair<double, double> key{ nextP.x(), nextP.y() };
+            int idx = index[key];
+            segs.emplace_back(ib, idx);
+          }
         }
       }
-      // close the loop
-      if (!loop.empty() && !loop.front().empty()) {
-        auto const& F = loop.front().front();
-        auto const& L = loop.back().back();
-        auto fa = std::make_pair(F.x(), F.y());
-        auto lb = std::make_pair(L.x(), L.y());
-        int ifa = index[fa], ilb = index[lb];
-        if (ifa != ilb) segs.emplace_back(ilb, ifa);
-      }
+      // // close the loop
+      // if (!loop.empty() && !loop.front().empty()) {
+      //   auto const& F = loop.front().front();
+      //   auto const& L = loop.back().back();
+      //   auto fa = std::make_pair(F.x(), F.y());
+      //   auto lb = std::make_pair(L.x(), L.y());
+      //   int ifa = index[fa], ilb = index[lb];
+      //   if (ifa != ilb) segs.emplace_back(ilb, ifa);
+      // }
     }
 
     // fill in.pointlist
@@ -68,10 +89,11 @@ namespace libcdgbs {
     // Recompute options for this run: no‐Steiner on loops + quality + area limit
     double A = (std::sqrt(3.0) / 4.0) * L_target * L_target;
     std::ostringstream opts;
-    opts << "pQzYq20a" << A;
+    opts << "VpzYq20a" << A;
     std::string s = opts.str();
     triangle_context_options(ctx_, const_cast<char*>(s.c_str()));
-    triangle_mesh_create(ctx_, &in);
+    int status = triangle_mesh_create(ctx_, &in);
+    std::cout << "Triangle status code: " << status << std::endl;
 
     // 2) Copy it out into a standard triangleio
     triangleio out{};
