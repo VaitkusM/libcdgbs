@@ -33,32 +33,32 @@ bool SurfGBS::compute_domain_boundary()
 {
   Curves3D points(num_loops);
   Curves3D normals(num_loops);
-  for(size_t loop = 0; loop < num_loops; loop) {
+  for (size_t loop = 0; loop < num_loops; loop) {
     points[loop].resize(num_sides[loop]);
     normals[loop].resize(num_sides[loop]);
-    for(size_t side = 0; side < num_sides[loop]; ++side) {
-      const auto &rib = ribbons[loop][side];
+    for (size_t side = 0; side < num_sides[loop]; ++side) {
+      const auto& rib = ribbons[loop][side];
       const size_t res = side_res[loop][side];
       points[loop][side].resize(res);
       normals[loop][side].resize(res);
-      for(size_t i = 0; i < res; ++i) {
-        const double u = double(i)/res;
+      for (size_t i = 0; i < res; ++i) {
+        const double u = double(i) / res;
 
         Geometry::VectorMatrix duv;
         auto pt = rib.eval(u, 0.0, 1, duv);
 
 
-        points[loop][side][i] = {pt[0], pt[1], pt[2]};
+        points[loop][side][i] = { pt[0], pt[1], pt[2] };
         auto du = duv[1][0];
         auto dv = duv[0][1];
-        auto nn = (du^dv).normalized();
+        auto nn = (du ^ dv).normalized();
         normals[loop][side][i] = { nn[0], nn[1], nn[2] };
       }
     }
   }
 
   domain_boundary_curves = LoopFlattener::developCurves(points, normals);
-  
+
   return true;
 }
 
@@ -66,12 +66,35 @@ bool SurfGBS::compute_domain_mesh()
 {
   auto triangle_wrapper = TriangleWrapper();
   meshDomain = triangle_wrapper.triangulate(domain_boundary_curves, side_res.front().front());
+
+  domain_boundary_vertices.clear();
+  domain_boundary_vertices.resize(num_loops);
+  size_t idx_vtx = 0;
+  for (size_t loop_idx = 0; loop_idx < domain_boundary_curves.size(); ++loop_idx) {
+    domain_boundary_vertices[loop_idx].resize(num_sides[loop_idx]);
+    auto const& loop = domain_boundary_curves[loop_idx];
+    size_t first_idx = idx_vtx;
+    for (size_t si = 0; si < loop.size(); ++si) {
+      auto sub = loop[si];
+      for (size_t i = 0; i < sub.size(); ++i) {
+        auto vtx = meshDomain.vertex_handle((si == loop.size() - 1 && i == sub.size() - 1) ? first_idx : idx_vtx);
+        domain_boundary_vertices[loop_idx][si].push_back(vtx);
+        if (i < sub.size() - 1) {
+          ++idx_vtx;
+        }
+      }
+    }
+  }
+
   return true;
 }
 
 bool SurfGBS::compute_local_parameters()
 {
-  //ToDo
+  if (!compute_harmonic_parameters()) {
+    std::cout << "Error computing harmonic parameters" << std::endl;
+    return false;
+  }
 
   return true;
 }
@@ -152,10 +175,10 @@ double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, 
   double mu = 1.0;
   double alpha = pow(hm1, num_rows[loop][side]) / (pow(hm1, num_rows[loop][side]) + pow(h, num_rows[loop][side]));
   double beta = pow(hp1, num_rows[loop][side]) / (pow(hp1, num_rows[loop][side]) + pow(h, num_rows[loop][side]));
-  if(col < num_rows[loop][side_m1]) {
+  if (col < num_rows[loop][side_m1]) {
     mu = alpha;
   }
-  if(col > num_cols[loop][side] - num_rows[loop][side_p1]) {
+  if (col > num_cols[loop][side] - num_rows[loop][side_p1]) {
     mu = beta;
   }
 
@@ -167,7 +190,7 @@ inline size_t circular_index(size_t i, int offset, size_t n) {
   return (i + n + (offset % static_cast<int>(n))) % n;
 }
 
-size_t SurfGBS::prev(size_t loop, size_t side) const{
+size_t SurfGBS::prev(size_t loop, size_t side) const {
   return circular_index(side, -1, num_sides[loop]);
 }
 

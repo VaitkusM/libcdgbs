@@ -24,18 +24,13 @@ namespace libcdgbs {
     std::vector<std::array<double, 2>> pts2D;
     std::vector<std::pair<int, int>> segs;
     std::vector<Eigen::Vector3d> holes;
-    // Flatten loops → sub‑curves → edges
+
     for (size_t loop_idx = 0; loop_idx < loops.size(); ++loop_idx) {
       auto const& loop = loops[loop_idx];
       Eigen::Vector3d cog(0.0, 0.0, 0.0);
       size_t num_pts = 0;
       for (size_t si = 0; si < loop.size(); ++si) {
-        // make a local copy so we can pop safely
-        auto sub = loop[si];
-        // if this isn’t the last subcurve in the loop, drop its last point
-        // if (si + 1 < loop.size() && !sub.empty()) {
-        //   sub.pop_back();
-        // }
+        const auto& sub = loop[si];
         for (size_t i = 0; i < sub.size() - 1; ++i) {
           cog += sub[i];
           ++num_pts;

@@ -9,6 +9,7 @@ namespace libcdgbs {
     using Ribbon = Geometry::BSSurface;
     using Point2D = Geometry::Point2D;
     using Point3D = Geometry::Point3D;
+    using VertexHandle = Mesh::VertexHandle;
 
     enum DomainType {
       CURVED,
@@ -22,6 +23,7 @@ namespace libcdgbs {
     Mesh meshSurface;
 
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > domain_boundary_curves;
+    std::vector<std::vector<std::vector<VertexHandle> > > domain_boundary_vertices;
 
     size_t num_loops;
     std::vector<size_t> num_sides;
@@ -49,6 +51,10 @@ namespace libcdgbs {
     bool compute_blend_functions();
     bool evaluate_mesh(bool reset = true);
 
+    bool compute_harmonic_parameters();
+
+
+
     size_t prev(size_t loop, size_t side) const;
     size_t next(size_t loop, size_t side) const;
 
@@ -63,6 +69,6 @@ namespace libcdgbs {
     // double get_h_coord(const Mesh::VertexHandle& vtx, size_t loop, size_t side) const;
 
     //double get_mu(const Point2D& uv, size_t loop, size_t side) const;
-    double get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, size_t row, size_t col) const;
+    double get_mu(const VertexHandle& vtx, size_t loop, size_t side, size_t row, size_t col) const;
   };
 }
