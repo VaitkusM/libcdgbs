@@ -62,6 +62,7 @@ bool SurfGBS::compute_harmonic_parameters()
   for (size_t loop = 0; loop < num_loops; ++loop) {
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       { // Compute h-coordinates
+        std::cout << "Computing h-coordinates for loop " << loop << " side " << side << std::endl;
         size_t side_m1 = prev(loop, side);
         size_t side_p1 = next(loop, side);
         std::vector<VertexHandle> side_pts;
@@ -84,12 +85,14 @@ bool SurfGBS::compute_harmonic_parameters()
         std::vector<VertexHandle> sides_pts;
         for (size_t li = 0; li < num_loops; ++li) {
           for (size_t si = 0; si < num_sides[li]; ++si) {
-            for(size_t i = 0; i < domain_boundary_vertices[li][si].size() - 1; ++i) {
+            for (size_t i = 0; i < domain_boundary_vertices[li][si].size() - 1; ++i) {
               auto vtx = domain_boundary_vertices[li][si][i];
               sides_pts.push_back(vtx);
             }
           }
         }
+
+        // std::cout << "sides_pts size: " << sides_pts.size() << std::endl;
 
         size_t num_cons = sides_pts.size();
         SparseMatrix CC(num_cons, num_vert), KKT;
@@ -97,6 +100,14 @@ bool SurfGBS::compute_harmonic_parameters()
         DenseMatrix rhs, x;
 
         addConstraint2Matrix(mesh, sides_pts, CC);
+
+        // std::cout << "CC size: " << CC.rows() << " " << CC.cols() << std::endl;
+        // //Printing non-zeroes of CC
+        // for (int k = 0; k < CC.outerSize(); ++k) {
+        //   for (SparseMatrix::InnerIterator it(CC, k); it; ++it) {
+        //     std::cout << "CC[" << it.row() << "][" << it.col() << "] = " << it.value() << std::endl;
+        //   }
+        // }
 
         addConstraint2RHS(
           mesh,
@@ -108,7 +119,7 @@ bool SurfGBS::compute_harmonic_parameters()
           0.0,
           0.0,
           true,
-          false
+          true
         );
 
         addConstraint2RHS(
@@ -120,8 +131,8 @@ bool SurfGBS::compute_harmonic_parameters()
           0.0,
           1.0,
           0.0,
-          true, 
-          false
+          true,
+          true
         );
 
         addConstraint2RHS(
@@ -134,12 +145,24 @@ bool SurfGBS::compute_harmonic_parameters()
           0.0,
           1.0,
           true,
-          false
+          true
         );
 
+        // //printing elements of dd
+        // for (int k = 0; k < dd.rows(); ++k) {
+        //   if (k % 99 == 0) {
+        //     std::cout << "/" << std::endl;
+        //   }
+        //   std::cout << "dd[" << k << "] = " << dd(k, 0) << std::endl;
+        //   if (k % 99 == 0) {
+        //     std::cout << "\\" << std::endl;
+        //   }
+        // }
+
         buildMatrixKKTSystem(QQ, CC, KKT);
+        KKT.makeCompressed();
         CC.resize(0, 0);
-        CC.data().squeeze();
+        //CC.data().squeeze();
         buildMatrixKKTRHS(pp, dd, rhs);
         dd.resize(0, 0);
 
@@ -153,6 +176,7 @@ bool SurfGBS::compute_harmonic_parameters()
       }
 
       { // Compute s-coordinates
+        std::cout << "Computing s-coordinates for loop " << loop << " side " << side << std::endl;
         size_t side_m1 = prev(loop, side);
         size_t side_p1 = next(loop, side);
         std::vector<VertexHandle> side_pts;
@@ -185,12 +209,22 @@ bool SurfGBS::compute_harmonic_parameters()
           false
         );
 
+        // std::cout << "sides_pts size: " << sides_pts.size() << std::endl;
+
         size_t num_cons = sides_pts.size();
         SparseMatrix CC(num_cons, num_vert), KKT;
         DenseMatrix dd;
         DenseMatrix rhs, x;
 
         addConstraint2Matrix(mesh, sides_pts, CC);
+
+        // std::cout << "CC size: " << CC.rows() << " " << CC.cols() << std::endl;
+        // //Printing non-zeroes of CC
+        // for (int k = 0; k < CC.outerSize(); ++k) {
+        //   for (SparseMatrix::InnerIterator it(CC, k); it; ++it) {
+        //     std::cout << "CC[" << it.row() << "][" << it.col() << "] = " << it.value() << std::endl;
+        //   }
+        // }
 
         addConstraint2RHS(
           mesh,
@@ -231,9 +265,19 @@ bool SurfGBS::compute_harmonic_parameters()
           true
         );
 
+        // //printing elements of dd
+        // for (int k = 0; k < dd.rows(); ++k) {
+        //   std::cout << "dd[" << k << "] = " << dd(k, 0) << std::endl;
+        //   // draw dashes after every 100th element
+        //   if (k % 100 == 99) {
+        //     std::cout << "------------------------" << std::endl;
+        //   }
+        // }
+
         buildMatrixKKTSystem(QQ, CC, KKT);
+        KKT.makeCompressed();
         CC.resize(0, 0);
-        CC.data().squeeze();
+        //CC.data().squeeze();
         buildMatrixKKTRHS(pp, dd, rhs);
         dd.resize(0, 0);
 
