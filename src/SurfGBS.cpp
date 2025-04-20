@@ -109,23 +109,32 @@ bool SurfGBS::compute_blend_functions()
     for (size_t loop = 0; loop < num_loops; ++loop) {
       Bf[loop].resize(num_sides[loop]);
       for (size_t side = 0; side < num_sides[loop]; ++side) {
-        Bf[loop][side].resize(num_rows[loop][side], std::vector<double>(num_cols[loop][side]));
+        Bf[loop][side].resize(
+          num_rows[loop][side], 
+          std::vector<double>(num_cols[loop][side], 0.0)
+        );
 
-        const auto s = s_coords[v.idx()][loop][side];
-        const auto h = h_coords[v.idx()][loop][side];
+        const auto deg_s = ribbons[loop][side].basisU().degree();
+        const auto deg_h = ribbons[loop][side].basisV().degree();
+
+        const auto s = std::min(std::max(s_coords[v.idx()][loop][side], 0.0), 1.0);
+        const auto h = std::min(std::max(h_coords[v.idx()][loop][side], 0.0), 1.0);
 
         const auto& Bu = ribbons[loop][side].basisU();
-        const auto& Bv = ribbons[loop][side].basisV();
+        const auto& Bv = Geometry::BSBasis(3, {0, 0, 0, 0, 1, 1, 1, 1});
 
-        size_t span_u = Bu.findSpan(s), span_v = Bv.findSpan(h);
+        const size_t span_u = Bu.findSpan(s), span_v = Bv.findSpan(h);
         Geometry::DoubleVector Bh, Bs;
-        Bu.basisFunctions(0, s, Bs);
-        Bv.basisFunctions(0, h, Bh);
+        Bu.basisFunctions(span_u, s, Bs);
+        Bv.basisFunctions(span_v, h, Bh);
 
         for (size_t row = 0; row < num_rows[loop][side]; ++row) {
-          for (size_t col = 0; col < num_cols[loop][side]; ++col) {
-            Bf[loop][side][row][col] =
-              get_mu(v, loop, side, row, col) * Bs[col] * Bh[row];
+          for (size_t col = 0; col <= deg_s; ++col) {
+            const size_t ri = row;
+            const size_t ci = col + span_u - deg_s;
+            const double mu = get_mu(v, loop, side, ri, ci);
+            Bf[loop][side][ri][ci] =
+              mu * Bs[col] * Bh[row];
           }
         }
       }
@@ -143,7 +152,7 @@ bool SurfGBS::evaluate_mesh(bool reset)
   for (const auto v : meshDomain.vertices()) {
 
     OpenMesh::Vec3d pt(0.0, 0.0, 0.0);
-
+    double sum = 0.0;
     for (size_t loop = 0; loop < num_loops; ++loop) {
       for (size_t side = 0; side < num_sides[loop]; ++side) {
         for (size_t row = 0; row < num_rows[loop][side]; ++row) {
@@ -151,11 +160,12 @@ bool SurfGBS::evaluate_mesh(bool reset)
             const auto Bf = blend_functions[v.idx()][loop][side][row][col];
             const auto cp = OpenMesh::Vec3d(ribbons[loop][side].controlPoint(col, row).data());
             pt += Bf * cp;
+            sum += Bf;
           }
         }
       }
     }
-
+    pt /= sum;
     meshSurface.point(meshSurface.vertex_handle(v.idx())) = pt;
   }
 
@@ -165,20 +175,22 @@ bool SurfGBS::evaluate_mesh(bool reset)
 
 double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, size_t row, size_t col) const
 {
-  auto side_m1 = prev(loop, side);
-  auto side_p1 = next(loop, side);
+  const auto side_m1 = prev(loop, side);
+  const auto side_p1 = next(loop, side);
 
-  double h = h_coords[vtx.idx()][loop][side];
-  double hm1 = h_coords[vtx.idx()][loop][side_m1];
-  double hp1 = h_coords[vtx.idx()][loop][side_p1];
+  const auto h = h_coords[vtx.idx()][loop][side];
+  const auto hm1 = h_coords[vtx.idx()][loop][side_m1];
+  const auto hp1 = h_coords[vtx.idx()][loop][side_p1];
+
+  const auto p = num_rows[loop][side];
+  const auto alpha = pow(hm1, p) / (pow(hm1, p) + pow(h, p));
+  const auto beta = pow(hp1, p) / (pow(hp1, p) + pow(h, p));
 
   double mu = 1.0;
-  double alpha = pow(hm1, num_rows[loop][side]) / (pow(hm1, num_rows[loop][side]) + pow(h, num_rows[loop][side]));
-  double beta = pow(hp1, num_rows[loop][side]) / (pow(hp1, num_rows[loop][side]) + pow(h, num_rows[loop][side]));
   if (col < num_rows[loop][side_m1]) {
     mu = alpha;
   }
-  if (col > num_cols[loop][side] - num_rows[loop][side_p1]) {
+  if (col >= num_cols[loop][side] - num_rows[loop][side_p1]) {
     mu = beta;
   }
 

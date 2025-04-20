@@ -7,7 +7,7 @@ static OpenMesh::IO::_OBJWriter_ _objWriterRegistration_;
 
 using namespace libcdgbs;
 
-bool SurfGBS::writeOBJ(const std::string& filename)
+bool SurfGBS::writeOBJ(const Mesh& mesh, const std::string& filename)
 {
-  return OpenMesh::IO::write_mesh(meshDomain, filename);
+  return OpenMesh::IO::write_mesh(mesh, filename);
 }

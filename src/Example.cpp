@@ -29,7 +29,7 @@ namespace libcdgbs {
     std::string filename("two_loops_sharp_flat"); 
     gbs.readMGBS(filename + ".mgbs");
     gbs.compute_domain_mesh();
-    gbs.writeOBJ(filename + ".obj");
+    gbs.writeOBJ(gbs.meshDomain, filename + ".obj");
     gbs.compute_local_parameters();
 
     double diag = bounding_box_diagonal(gbs.meshDomain);
@@ -40,15 +40,24 @@ namespace libcdgbs {
           auto h = gbs.h_coords[v.idx()][loop][side];
           gbs.meshDomain.point(v)[2] = h*diag;
         }
-        gbs.writeOBJ(std::string("h") + std::to_string(loop) + std::to_string(side) + std::string(".obj"));
+        gbs.writeOBJ(gbs.meshDomain, std::string("h") + std::to_string(loop) + std::to_string(side) + std::string(".obj"));
         for (auto v : gbs.meshDomain.vertices()) {
           auto pt = gbs.meshDomain.point(v);
           auto s = gbs.s_coords[v.idx()][loop][side];
           gbs.meshDomain.point(v)[2] = s*diag;
         }
-        gbs.writeOBJ(std::string("s") + std::to_string(loop) + std::to_string(side) + std::string(".obj"));
+        gbs.writeOBJ(gbs.meshDomain, std::string("s") + std::to_string(loop) + std::to_string(side) + std::string(".obj"));
       }
     }
+    for (auto v : gbs.meshDomain.vertices()) {
+      auto pt = gbs.meshDomain.point(v);
+      gbs.meshDomain.point(v)[2] = 0.0;
+    }
+
+    gbs.compute_blend_functions();
+    gbs.evaluate_mesh(true);
+    gbs.writeOBJ(gbs.meshSurface, filename + "_surf.obj");
+
 
     std::cout << "Hello from libcdgbs!" << std::endl;
   }
