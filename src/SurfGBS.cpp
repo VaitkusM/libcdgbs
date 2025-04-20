@@ -110,7 +110,7 @@ bool SurfGBS::compute_blend_functions()
       Bf[loop].resize(num_sides[loop]);
       for (size_t side = 0; side < num_sides[loop]; ++side) {
         Bf[loop][side].resize(
-          num_rows[loop][side], 
+          num_rows[loop][side],
           std::vector<double>(num_cols[loop][side], 0.0)
         );
 
@@ -121,7 +121,7 @@ bool SurfGBS::compute_blend_functions()
         const auto h = std::min(std::max(h_coords[v.idx()][loop][side], 0.0), 1.0);
 
         const auto& Bu = ribbons[loop][side].basisU();
-        const auto& Bv = Geometry::BSBasis(3, {0, 0, 0, 0, 1, 1, 1, 1});
+        const auto& Bv = Geometry::BSBasis(3, { 0, 0, 0, 0, 1, 1, 1, 1 });
 
         const size_t span_u = Bu.findSpan(s), span_v = Bv.findSpan(h);
         Geometry::DoubleVector Bh, Bs;
@@ -175,6 +175,8 @@ bool SurfGBS::evaluate_mesh(bool reset)
 
 double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, size_t row, size_t col) const
 {
+  const auto eps = 1e-10;
+  
   const auto side_m1 = prev(loop, side);
   const auto side_p1 = next(loop, side);
 
@@ -187,11 +189,16 @@ double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, 
   const auto beta = pow(hp1, p) / (pow(hp1, p) + pow(h, p));
 
   double mu = 1.0;
-  if (col < num_rows[loop][side_m1]) {
-    mu = alpha;
+  if (hm1 < eps && h < eps || h < eps && hp1 < eps) {
+    mu = 0.5;
   }
-  if (col >= num_cols[loop][side] - num_rows[loop][side_p1]) {
-    mu = beta;
+  else {
+    if (col < num_rows[loop][side_m1]) {
+      mu = alpha;
+    }
+    if (col >= num_cols[loop][side] - num_rows[loop][side_p1]) {
+      mu = beta;
+    }
   }
 
   return mu;
