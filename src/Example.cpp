@@ -26,8 +26,8 @@ namespace libcdgbs {
 
   void Example::say_hello() {
     gbs = SurfGBS();
-    std::string filename("VShape_SingleLoop");
-    gbs.readMGBS(filename + ".mgbs");
+    std::string filename("patch-1");
+    gbs.readMGBS(filename + ".mgbs", 0.02);
     gbs.compute_domain_boundary();
     gbs.compute_domain_mesh();
     gbs.writeOBJ(gbs.meshDomain, filename + ".obj");

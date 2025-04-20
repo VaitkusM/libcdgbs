@@ -64,6 +64,8 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
       side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
     }
   }
+
+  SurfGBS::target_length = target_length;
 }
 
 void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh)
@@ -216,7 +218,7 @@ bool SurfGBS::evaluate_mesh(Mesh& mesh, bool reset)
       }
     }
     pt /= sum;
-    mesh.point(meshSurface.vertex_handle(v.idx())) = pt;
+    mesh.point(mesh.vertex_handle(v.idx())) = pt;
   }
 
   return true;
