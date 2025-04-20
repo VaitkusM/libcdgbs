@@ -33,7 +33,7 @@ bool SurfGBS::compute_domain_boundary()
 {
   Curves3D points(num_loops);
   Curves3D normals(num_loops);
-  for (size_t loop = 0; loop < num_loops; loop) {
+  for (size_t loop = 0; loop < num_loops; ++loop) {
     points[loop].resize(num_sides[loop]);
     normals[loop].resize(num_sides[loop]);
     for (size_t side = 0; side < num_sides[loop]; ++side) {

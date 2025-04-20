@@ -1,5 +1,5 @@
 #include "libcdgbs/LoopFlattener.hpp"
-
+#include <iostream>
 using namespace libcdgbs;
 
 using Vec3 = Eigen::Vector3d;
@@ -15,113 +15,136 @@ Curves3D LoopFlattener::developCurves(const Curves3D& curves, const Curves3D& no
   Curves3D developedCurves;
   developedCurves.reserve(curves.size());
 
+  const Vec3 globalZ(0, 0, 1);
   for (size_t curveIdx = 0; curveIdx < curves.size(); ++curveIdx) {
     const auto& subCurves = curves[curveIdx];
     const auto& subNormals = normals[curveIdx];
+    if (subCurves.size() != subNormals.size()) continue;
 
-    if (subCurves.size() != subNormals.size()) {
-      continue;
-    }
-
+    // First pass: compute edge lengths and 2D directions by rotating each edge to align its normal with Z
     std::vector<Vec2> directions;
     std::vector<double> lengths;
-
-    // First pass: extract edge directions and lengths
     for (size_t subIdx = 0; subIdx < subCurves.size(); ++subIdx) {
-      const auto& points = subCurves[subIdx];
+      const auto& pts = subCurves[subIdx];
       const auto& norms = subNormals[subIdx];
-      if (points.size() < 2 || points.size() != norms.size()) continue;
-
-      for (size_t i = 0; i < points.size() - 1; ++i) {
-        Vec3 edge = points[i + 1] - points[i];
+      if (pts.size() < 2 || norms.size() != pts.size()) continue;
+      for (size_t i = 0; i + 1 < pts.size(); ++i) {
+        Vec3 edge = pts[i + 1] - pts[i];
         Vec3 normal = norms[i].normalized();
+        double L3 = edge.norm();
 
-        Vec3 tangent1 = edge.normalized();
-        Vec3 tangent2 = normal.cross(tangent1).normalized();
-        tangent1 = tangent2.cross(normal).normalized();
+        // rotation that maps 'normal' to Z
+        Vec3 axis = normal.cross(globalZ);
+        double axisLen = axis.norm();
+        Vec3 rotated;
+        if (axisLen < 1e-8) {
+          // normal already near ±Z
+          rotated = (normal.dot(globalZ) > 0 ? edge : -edge);
+        }
+        else {
+          axis.normalize();
+          double ang = std::acos(std::clamp(normal.dot(globalZ), -1.0, 1.0));
+          Eigen::AngleAxisd R(ang, axis);
+          rotated = R * edge;
+        }
 
-        double edgeLength = edge.norm();
-        Eigen::Matrix<double, 3, 2> basis;
-        basis.col(0) = tangent1;
-        basis.col(1) = tangent2;
+        // projected 2D direction in XY-plane
+        Vec2 d2(rotated.x(), rotated.y());
+        double L2 = d2.norm();
+        Vec2 dir2d = (L2 > 1e-8 ? d2 / L2 : Vec2(1, 0));
 
-        Vec2 projected = basis.transpose() * edge;
-        projected = projected.normalized() * edgeLength;
-
-        directions.push_back(projected.normalized());
-        lengths.push_back(edgeLength);
+        directions.push_back(dir2d);
+        lengths.push_back(L3);
       }
     }
 
-    // Compute angles between directions
-    std::vector<double> angles;
-    for (size_t i = 0; i < directions.size(); ++i) {
-      const Vec2& dir1 = directions[i];
-      const Vec2& dir2 = directions[(i + 1) % directions.size()];
-      double dot = std::clamp(dir1.dot(dir2), -1.0, 1.0);
-      double angle = std::acos(dot);
-      double sign = (dir1.x() * dir2.y() - dir1.y() * dir2.x()) > 0 ? 1.0 : -1.0;
-      angles.push_back(sign * angle);
+    size_t n = directions.size();
+    if (n == 0) continue;
+
+    // Compute signed exterior (turn) angles between successive segments
+    std::vector<double> extAngles(n);
+    for (size_t i = 0; i < n; ++i) {
+      const Vec2& d1 = directions[i];
+      const Vec2& d2 = directions[(i + 1) % n];
+      double crossv = d1.x() * d2.y() - d1.y() * d2.x();
+      double dotv = std::clamp(d1.dot(d2), -1.0, 1.0);
+      extAngles[i] = std::atan2(crossv, dotv);
     }
 
-    // Normalize angles to sum up to (n - 2) * PI for closed polygon with n vertices
-    double targetSum = (directions.size() - 2) * M_PI;
-    double actualSum = std::accumulate(angles.begin(), angles.end(), 0.0);
-    double correctionFactor = targetSum / actualSum;
-    for (auto& angle : angles) angle *= correctionFactor;
+    // Compute interior angles = π − exterior
+    std::vector<double> intAngles(n);
+    for (size_t i = 0; i < n; ++i) {
+      intAngles[i] = M_PI - extAngles[i];
+    }
 
-    // Second pass: construct the developed curve
+    // Mark actual corners by detecting large exterior turns
+    std::vector<bool> isCorner(n, false);
+    const double thetaCorner = M_PI / 4; // >45° considered a true corner
+    for (size_t i = 0; i < n; ++i) {
+      if (std::abs(extAngles[i]) > thetaCorner)
+        isCorner[i] = true;
+    }
+
+    // Normalize only non-corner interior angles so sum = (n-2)π
+    double sumRes = 0, sumUnres = 0;
+    for (size_t i = 0; i < n; ++i) {
+      (isCorner[i] ? sumRes : sumUnres) += intAngles[i];
+    }
+    double target = (static_cast<double>(n) - 2.0) * M_PI;
+    if (sumUnres > 1e-8) {
+      double scale = (target - sumRes) / sumUnres;
+      for (size_t i = 0; i < n; ++i)
+        if (!isCorner[i]) intAngles[i] *= scale;
+    }
+
+    // Convert back to exterior angles
+    for (size_t i = 0; i < n; ++i) {
+      extAngles[i] = M_PI - intAngles[i];
+    }
+
+    // Second pass: build flattened loops in 2D
     Curve3D developedCurve;
-    Vec2 currentPos(0.0, 0.0);
-    Vec2 currentDir(1.0, 0.0);
+    developedCurve.reserve(subCurves.size());
+    Vec2 pos(0, 0);
+    Vec2 dir = directions[0];
     size_t edgeIdx = 0;
-
-    std::vector<Vec2> developedFlatPoints;
-    developedFlatPoints.emplace_back(currentPos);
+    std::vector<Vec2> flatPts;
+    flatPts.reserve(n + 1);
+    flatPts.push_back(pos);
 
     for (size_t subIdx = 0; subIdx < subCurves.size(); ++subIdx) {
-      const auto& points = subCurves[subIdx];
-      const auto& norms = subNormals[subIdx];
-      if (points.size() < 2 || points.size() != norms.size()) continue;
-
-      SubCurve3D developedSubCurve;
-      developedSubCurve.reserve(points.size());
-      developedSubCurve.emplace_back(currentPos.x(), currentPos.y(), 0.0);
-
-      for (size_t i = 0; i < points.size() - 1; ++i, ++edgeIdx) {
-        double angle = angles[edgeIdx];
-        Eigen::Rotation2D<double> rot(angle);
-        currentDir = rot * currentDir;
-        currentPos += currentDir * lengths[edgeIdx];
-        developedSubCurve.emplace_back(currentPos.x(), currentPos.y(), 0.0);
-        developedFlatPoints.emplace_back(currentPos);
+      const auto& pts = subCurves[subIdx];
+      size_t m = pts.size();
+      if (m < 2) continue;
+      SubCurve3D devSub;
+      devSub.reserve(m);
+      devSub.emplace_back(pos.x(), pos.y(), 0);
+      for (size_t i = 0; i + 1 < m; ++i, ++edgeIdx) {
+        if (edgeIdx > 0) dir = Eigen::Rotation2D<double>(extAngles[edgeIdx - 1]) * dir;
+        pos += dir * lengths[edgeIdx];
+        devSub.emplace_back(pos.x(), pos.y(), 0);
+        flatPts.push_back(pos);
       }
-
-      developedCurve.push_back(std::move(developedSubCurve));
+      developedCurve.push_back(std::move(devSub));
     }
 
-    // Compute total arclength and displacement to close the loop
+    // Displacement correction to ensure closure
     double totalArc = std::accumulate(lengths.begin(), lengths.end(), 0.0);
-    Vec2 loopDisplacement = developedFlatPoints.front() - developedFlatPoints.back();
-
-    // Apply correction to each point by relative arclength
-    double accumulatedLength = 0.0;
-    size_t flatPointIdx = 0;
-    for (size_t subIdx = 0; subIdx < developedCurve.size(); ++subIdx) {
-      auto& sub = developedCurve[subIdx];
-      for (size_t i = 0; i < sub.size(); ++i, ++flatPointIdx) {
-        double weight = accumulatedLength / totalArc;
-        Vec2 correction = weight * loopDisplacement;
-        sub[i].x() += correction.x();
-        sub[i].y() += correction.y();
-        if (i < sub.size() - 1 && edgeIdx < lengths.size()) {
-          accumulatedLength += lengths[flatPointIdx];
-        }
+    Vec2 delta = flatPts.front() - flatPts.back();
+    double acc = 0; size_t idx = 0;
+    for (auto& sub : developedCurve) {
+      for (size_t i = 0;i < sub.size();++i, ++idx) {
+        double w = (totalArc > 0 ? acc / totalArc : 0);
+        Vec2 corr = delta * w;
+        sub[i].x() += corr.x();
+        sub[i].y() += corr.y();
+        if (i + 1 < sub.size()) acc += lengths[idx];
       }
     }
 
     developedCurves.push_back(std::move(developedCurve));
   }
 
+  std::cout << "Developing curves... DONE!" << std::endl;
   return developedCurves;
 }
