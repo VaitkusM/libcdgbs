@@ -9,26 +9,72 @@ using SubCurve3D = std::vector<Vec3>;
 using Curve3D = std::vector<SubCurve3D>;
 using Curves3D = std::vector<Curve3D>;
 
+//calculate arclength of each ribbon boundary B-spline curve
+double getLength(const Geometry::BSSurface& rib) {
+  double length = 0.0;
+  for (size_t i = 0; i < 200; ++i) {
+    double ua = double(i) / 200.0;
+    double ub = double(i + 1) / 200.0;
+    auto pa = rib.eval(ua, 0.0);
+    auto pb = rib.eval(ub, 0.0);
+    length += (pb - pa).norm();
+  }
+  return length;
+}
+
+
 SurfGBS::SurfGBS()
 {
 
 }
 
-int SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs)
+void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length)
 {
   ribbons = ribbon_surfs;
 
   int ret_code = 0;
 
+  num_loops = ribbons.size();
+  num_sides.resize(num_loops);
+  num_rows.resize(num_loops);
+  num_cols.resize(num_loops);
+  side_res.resize(num_loops);
+  deg_h.resize(num_loops);
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    num_sides[loop] = ribbons[loop].size();
+    deg_h[loop].resize(ribbons[loop].size(), 3);
+    num_rows[loop].resize(ribbons[loop].size());
+    num_cols[loop].resize(ribbons[loop].size());
+    side_res[loop].resize(ribbons[loop].size());
+    for (size_t side = 0; side < ribbons[loop].size(); ++side) {
+      //NUmber of B-spline control points in U and V directions
+      num_rows[loop][side] = ribbons[loop][side].basisV().knots().size() - ribbons[loop][side].basisV().degree() - 1;
+      num_cols[loop][side] = ribbons[loop][side].basisU().knots().size() - ribbons[loop][side].basisU().degree() - 1;
+      side_res[loop][side] = 100; // default resolution
+    }
+  }
+
+  // Set number of samples based on target edge length
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    for (size_t side = 0; side < num_sides[loop]; ++side) {
+      auto rib = ribbons[loop][side];
+      auto curve_length = getLength(rib);
+
+      auto num_samples = std::max(1.0, curve_length / target_length);
+      side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
+    }
+  }
+}
+
+void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh)
+{
+  load_ribbons(ribbon_surfs, target_length);
   compute_domain_boundary();
   compute_domain_mesh();
   compute_local_parameters();
   compute_blend_functions();
-  evaluate_mesh();
-
-  return true;
+  evaluate_mesh(mesh);
 }
-
 bool SurfGBS::compute_domain_boundary()
 {
   Curves3D points(num_loops);
@@ -115,13 +161,17 @@ bool SurfGBS::compute_blend_functions()
         );
 
         const auto deg_s = ribbons[loop][side].basisU().degree();
-        const auto deg_h = ribbons[loop][side].basisV().degree();
+        const auto deg_h = SurfGBS::deg_h[loop][side];
 
         const auto s = std::min(std::max(s_coords[v.idx()][loop][side], 0.0), 1.0);
         const auto h = std::min(std::max(h_coords[v.idx()][loop][side], 0.0), 1.0);
 
         const auto& Bu = ribbons[loop][side].basisU();
-        const auto& Bv = Geometry::BSBasis(3, { 0, 0, 0, 0, 1, 1, 1, 1 });
+        const auto& Bv = Geometry::BSBasis(deg_h, [deg_h]() {
+          Geometry::DoubleVector knots(deg_h + 1, 0.0);
+          knots.insert(knots.end(), deg_h + 1, 1.0);
+          return knots;
+          }());
 
         const size_t span_u = Bu.findSpan(s), span_v = Bv.findSpan(h);
         Geometry::DoubleVector Bh, Bs;
@@ -144,12 +194,12 @@ bool SurfGBS::compute_blend_functions()
   return true;
 }
 
-bool SurfGBS::evaluate_mesh(bool reset)
+bool SurfGBS::evaluate_mesh(Mesh& mesh, bool reset)
 {
   if (reset) {
-    meshSurface = Mesh(meshDomain);
+    mesh = Mesh(meshDomain);
   }
-  for (const auto v : meshDomain.vertices()) {
+  for (const auto v : mesh.vertices()) {
 
     OpenMesh::Vec3d pt(0.0, 0.0, 0.0);
     double sum = 0.0;
@@ -166,7 +216,7 @@ bool SurfGBS::evaluate_mesh(bool reset)
       }
     }
     pt /= sum;
-    meshSurface.point(meshSurface.vertex_handle(v.idx())) = pt;
+    mesh.point(meshSurface.vertex_handle(v.idx())) = pt;
   }
 
   return true;

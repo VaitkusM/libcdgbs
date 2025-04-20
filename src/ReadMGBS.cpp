@@ -8,19 +8,6 @@
 
 using namespace libcdgbs;
 
-//calculate arclength of each ribbon boundary B-spline curve
-double getLength(const Geometry::BSSurface& rib) {
-  double length = 0.0;
-  for (size_t i = 0; i < 200; ++i) {
-    double ua = double(i) / 200.0;
-    double ub = double(i + 1) / 200.0;
-    auto pa = rib.eval(ua, 0.0);
-    auto pb = rib.eval(ub, 0.0);
-    length += (pb - pa).norm();
-  }
-  return length;
-}
-
 bool SurfGBS::readMGBS(const std::string& filename)
 {
   std::ifstream in(filename);
@@ -28,6 +15,12 @@ bool SurfGBS::readMGBS(const std::string& filename)
     std::cerr << "Cannot open file\n";
     return false;
   }
+
+  std::vector<std::vector<Ribbon> > ribbons;
+  size_t num_loops;
+  std::vector<size_t> num_sides;
+  std::vector<std::vector<size_t>> num_rows;
+  std::vector<std::vector<size_t>> num_cols;
 
   ribbons.clear();
   num_sides.clear();
@@ -91,39 +84,41 @@ bool SurfGBS::readMGBS(const std::string& filename)
     std::cerr << "Missing side/mesh resolution\n";
     return false;
   }
-  side_res.clear();
-  side_res.resize(num_loops);
-  for (size_t loop = 0; loop < num_loops; ++loop) {
-    side_res[loop].resize(num_sides[loop], sideRes);
-  }
+
+  load_ribbons(ribbons);
+  // side_res.clear();
+  // side_res.resize(num_loops);
+  // for (size_t loop = 0; loop < num_loops; ++loop) {
+  //   side_res[loop].resize(num_sides[loop], sideRes);
+  // }
 
 
-  // Set number of samples based on target edge length
-  for( size_t loop = 0; loop < num_loops; ++loop) {
-    for(size_t side = 0; side < num_sides[loop]; ++side) {
-      auto rib = ribbons[loop][side];
-      auto curve_length = getLength(rib);
+  // // Set number of samples based on target edge length
+  // for( size_t loop = 0; loop < num_loops; ++loop) {
+  //   for(size_t side = 0; side < num_sides[loop]; ++side) {
+  //     auto rib = ribbons[loop][side];
+  //     auto curve_length = getLength(rib);
       
-      auto num_samples = std::max(1.0, curve_length / target_length);
-      side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
-    }
-  }
+  //     auto num_samples = std::max(1.0, curve_length / target_length);
+  //     side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
+  //   }
+  // }
 
-  domain_boundary_curves.clear();
-  domain_boundary_curves.resize(num_loops);
-  for(size_t loop = 0; loop < num_loops; ++loop) {
-    domain_boundary_curves[loop].resize(num_sides[loop]);
-    for(size_t side = 0; side < num_sides[loop]; ++side) {
-      domain_boundary_curves[loop][side].resize(side_res[loop][side]);
-      const auto& rib = ribbons[loop][side];
-      for(size_t i = 0; i < side_res[loop][side]; ++i) {
-        auto u = double(i)/(side_res[loop][side] - 1);
-        auto pt = rib.eval(u, 0.0);
-        domain_boundary_curves[loop][side][i] = { pt[0], pt[1], pt[2] };
-        std::cout << domain_boundary_curves[loop][side][i][0] << ", "  << domain_boundary_curves[loop][side][i][1] << std::endl;
-      }
-    }
-  }
+  // domain_boundary_curves.clear();
+  // domain_boundary_curves.resize(num_loops);
+  // for(size_t loop = 0; loop < num_loops; ++loop) {
+  //   domain_boundary_curves[loop].resize(num_sides[loop]);
+  //   for(size_t side = 0; side < num_sides[loop]; ++side) {
+  //     domain_boundary_curves[loop][side].resize(side_res[loop][side]);
+  //     const auto& rib = ribbons[loop][side];
+  //     for(size_t i = 0; i < side_res[loop][side]; ++i) {
+  //       auto u = double(i)/(side_res[loop][side] - 1);
+  //       auto pt = rib.eval(u, 0.0);
+  //       domain_boundary_curves[loop][side][i] = { pt[0], pt[1], pt[2] };
+  //       std::cout << domain_boundary_curves[loop][side][i][0] << ", "  << domain_boundary_curves[loop][side][i][1] << std::endl;
+  //     }
+  //   }
+  // }
 
   return true;
 }

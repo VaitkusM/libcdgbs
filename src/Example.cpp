@@ -26,8 +26,9 @@ namespace libcdgbs {
 
   void Example::say_hello() {
     gbs = SurfGBS();
-    std::string filename("two_loops_sharp_flat"); 
+    std::string filename("VShape_SingleLoop");
     gbs.readMGBS(filename + ".mgbs");
+    gbs.compute_domain_boundary();
     gbs.compute_domain_mesh();
     gbs.writeOBJ(gbs.meshDomain, filename + ".obj");
     gbs.compute_local_parameters();
@@ -55,7 +56,7 @@ namespace libcdgbs {
     }
 
     gbs.compute_blend_functions();
-    gbs.evaluate_mesh(true);
+    gbs.evaluate_mesh(gbs.meshSurface, true);
     gbs.writeOBJ(gbs.meshSurface, filename + "_surf.obj");
 
 

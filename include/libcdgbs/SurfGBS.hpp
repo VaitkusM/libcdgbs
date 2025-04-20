@@ -29,6 +29,7 @@ namespace libcdgbs {
     std::vector<size_t> num_sides;
     std::vector<std::vector<size_t>> num_rows;
     std::vector<std::vector<size_t>> num_cols;
+    std::vector<std::vector<size_t>> deg_h;
 
     double target_length = 3.0;
     std::vector<std::vector<size_t> > side_res;
@@ -40,7 +41,8 @@ namespace libcdgbs {
 
     SurfGBS();
 
-    int load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs);
+    void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length = 3.0);
+    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh);
 
     bool readMGBS(const std::string& filename);
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
@@ -49,7 +51,7 @@ namespace libcdgbs {
     bool compute_domain_mesh();
     bool compute_local_parameters();
     bool compute_blend_functions();
-    bool evaluate_mesh(bool reset = true);
+    bool evaluate_mesh(Mesh& mesh, bool reset = true);
 
     bool compute_harmonic_parameters();
 
