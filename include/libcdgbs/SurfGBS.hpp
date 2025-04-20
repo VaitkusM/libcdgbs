@@ -30,7 +30,7 @@ namespace libcdgbs {
     std::vector<std::vector<size_t>> num_rows;
     std::vector<std::vector<size_t>> num_cols;
 
-
+    double target_length = 3.0;
     std::vector<std::vector<size_t> > side_res;
 
     std::vector<std::vector<std::vector<double> > > s_coords;

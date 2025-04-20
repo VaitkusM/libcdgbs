@@ -8,6 +8,19 @@
 
 using namespace libcdgbs;
 
+//calculate arclength of each ribbon boundary B-spline curve
+double getLength(const Geometry::BSSurface& rib) {
+  double length = 0.0;
+  for (size_t i = 0; i < 200; ++i) {
+    double ua = double(i) / 200.0;
+    double ub = double(i + 1) / 200.0;
+    auto pa = rib.eval(ua, 0.0);
+    auto pb = rib.eval(ub, 0.0);
+    length += (pb - pa).norm();
+  }
+  return length;
+}
+
 bool SurfGBS::readMGBS(const std::string& filename)
 {
   std::ifstream in(filename);
@@ -82,6 +95,18 @@ bool SurfGBS::readMGBS(const std::string& filename)
   side_res.resize(num_loops);
   for (size_t loop = 0; loop < num_loops; ++loop) {
     side_res[loop].resize(num_sides[loop], sideRes);
+  }
+
+
+  // Set number of samples based on target edge length
+  for( size_t loop = 0; loop < num_loops; ++loop) {
+    for(size_t side = 0; side < num_sides[loop]; ++side) {
+      auto rib = ribbons[loop][side];
+      auto curve_length = getLength(rib);
+      
+      auto num_samples = std::max(1.0, curve_length / target_length);
+      side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
+    }
   }
 
   domain_boundary_curves.clear();

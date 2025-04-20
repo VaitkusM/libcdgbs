@@ -65,7 +65,7 @@ bool SurfGBS::compute_domain_boundary()
 bool SurfGBS::compute_domain_mesh()
 {
   auto triangle_wrapper = TriangleWrapper();
-  meshDomain = triangle_wrapper.triangulate(domain_boundary_curves, side_res.front().front());
+  meshDomain = triangle_wrapper.triangulate(domain_boundary_curves, target_length);
 
   domain_boundary_vertices.clear();
   domain_boundary_vertices.resize(num_loops);
@@ -176,7 +176,7 @@ bool SurfGBS::evaluate_mesh(bool reset)
 double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, size_t row, size_t col) const
 {
   const auto eps = 1e-10;
-  
+
   const auto side_m1 = prev(loop, side);
   const auto side_p1 = next(loop, side);
 
