@@ -168,7 +168,7 @@ void MatrixUtil::buildMatrixKKTSystem(
   int num_rows_C = CC.rows();
 
   LL.resize(num_rows_A + num_rows_C, num_cols_A + num_rows_C);
-  DenseVector num_nnz = DenseVector(LL.cols());
+  DenseVector num_nnz = DenseVector::Zero(LL.cols());
 
   for (int kk = 0; kk < AA.outerSize(); ++kk) {
     for (SparseMatrix::InnerIterator it(AA, kk); it; ++it) {
