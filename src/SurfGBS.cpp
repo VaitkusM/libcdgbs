@@ -77,8 +77,16 @@ void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >&
   compute_blend_functions();
   evaluate_mesh(mesh);
 }
+
 bool SurfGBS::compute_domain_boundary()
 {
+  developed_boundary_curves.clear();
+  developed_boundary_curves_normalized.clear();
+  domain_boundary_curves.clear();
+  developed_boundary_curves.resize(num_loops);
+  developed_boundary_curves_normalized.resize(num_loops);
+  domain_boundary_curves.resize(num_loops);
+
   Curves3D points(num_loops);
   Curves3D normals(num_loops);
   for (size_t loop = 0; loop < num_loops; ++loop) {
@@ -103,9 +111,18 @@ bool SurfGBS::compute_domain_boundary()
         normals[loop][side][i] = { nn[0], nn[1], nn[2] };
       }
     }
+
+    developed_boundary_curves[loop] =
+      LoopFlattener::developLoop(points[loop], normals[loop]);
+
+    developed_boundary_curves_normalized[loop] = 
+      LoopFlattener::normalizeLoopAngles(points[loop], normals[loop]);
+
+    domain_boundary_curves[loop] = 
+      LoopFlattener::closeLoop(developed_boundary_curves_normalized[loop]);
   }
 
-  domain_boundary_curves = LoopFlattener::developCurves(points, normals);
+
 
   return true;
 }

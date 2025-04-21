@@ -5,6 +5,6 @@ namespace libcdgbs {
     class Example {
     public:
         SurfGBS gbs;
-        void say_hello();
+        void say_hello(const std::string& filename = "");
     };
 }

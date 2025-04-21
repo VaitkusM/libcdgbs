@@ -22,6 +22,8 @@ namespace libcdgbs {
     Mesh meshDomain;
     Mesh meshSurface;
 
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > developed_boundary_curves;
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > developed_boundary_curves_normalized;
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > domain_boundary_curves;
     std::vector<std::vector<std::vector<VertexHandle> > > domain_boundary_vertices;
 

@@ -24,9 +24,8 @@ namespace libcdgbs {
   }
 
 
-  void Example::say_hello() {
+  void Example::say_hello(const std::string& filename) {
     gbs = SurfGBS();
-    std::string filename("patch-1");
     gbs.readMGBS(filename + ".mgbs", 0.02);
     gbs.compute_domain_boundary();
     gbs.compute_domain_mesh();
