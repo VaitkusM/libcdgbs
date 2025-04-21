@@ -40,6 +40,13 @@ file(GLOB_RECURSE LIBCDGBS_SRC "src/*.cpp")
 
 add_library(libcdgbs STATIC ${LIBCDGBS_SRC})
 
+# Precompiled headers for libcdgbs
+# Include heavy template headers once for faster builds and lower memory usage
+target_precompile_headers(libcdgbs PRIVATE
+    <Eigen/Core>
+    <OpenMesh/Core/IO/MeshIO.hh>
+)
+
 # 🔧 Add include paths for Triangle, including generated headers
 target_include_directories(libcdgbs
     PRIVATE
@@ -65,6 +72,12 @@ target_link_libraries(libcdgbs
 
 # ---- Test Executable ----
 add_executable(libcdgbs_test tests/main_test.cpp)
+
+# Precompiled headers for test executable
+target_precompile_headers(libcdgbs_test PRIVATE
+    <Eigen/Core>
+    <OpenMesh/Core/IO/MeshIO.hh>
+)
 
 # 🔧 Also add include path for generated headers here
 target_include_directories(libcdgbs_test
