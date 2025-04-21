@@ -219,18 +219,18 @@ bool MatrixUtil::solveLinearSystem(
 )
 {
   Eigen::SparseLU<SparseMatrix> solver;
-  std::cout << "Factorizing KKT matrix...";
+  // std::cout << "Factorizing KKT matrix...";
   solver.compute(AA);
-  std::cout << " DONE!" << std::endl;
+  // std::cout << " DONE!" << std::endl;
 
   if (solver.info() != Eigen::Success) {
     std::cout << "  !!!ERROR during factorization!!!" << std::endl;
     return false;
   }
 
-  std::cout << "Backsolving for KKT system...";
+  // std::cout << "Backsolving for KKT system...";
   xx = solver.solve(bb);
-  std::cout << " DONE!" << std::endl;
+  // std::cout << " DONE!" << std::endl;
 
   if (solver.info() != Eigen::Success) {
     std::cout << "  !!!ERROR during backsolve!!!" << std::endl;

@@ -59,6 +59,6 @@ namespace libcdgbs {
     gbs.writeOBJ(gbs.meshSurface, filename + "_surf.obj");
 
 
-    std::cout << "Hello from libcdgbs!" << std::endl;
+    // std::cout << "Hello from libcdgbs!" << std::endl;
   }
 }

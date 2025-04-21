@@ -107,7 +107,7 @@ namespace libcdgbs {
     std::string s = opts.str();
     triangle_context_options(ctx_, const_cast<char*>(s.c_str()));
     int status = triangle_mesh_create(ctx_, &in);
-    std::cout << "Triangle status code: " << status << std::endl;
+    // std::cout << "Triangle status code: " << status << std::endl;
 
     // 2) Copy it out into a standard triangleio
     triangleio out{};
