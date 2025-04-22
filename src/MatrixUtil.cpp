@@ -164,7 +164,6 @@ void MatrixUtil::buildMatrixKKTSystem(
 {
   int num_cols_A = AA.cols();
   int num_rows_A = AA.rows();
-  int num_cols_C = CC.cols();
   int num_rows_C = CC.rows();
 
   LL.resize(num_rows_A + num_rows_C, num_cols_A + num_rows_C);

@@ -1,25 +1,16 @@
 #include "libcdgbs/TriangleWrapper.hpp"
+#include <triangle.h>
 #include <cstdlib>
 #include <cstring>
 #include <map>
 
 namespace libcdgbs {
-
-  TriangleWrapper::TriangleWrapper(char const* options) {
-    ctx_ = triangle_context_create();
-    triangle_context_options(ctx_, const_cast<char*>(options));
-  }
-
-  TriangleWrapper::~TriangleWrapper() {
-    triangle_context_destroy(ctx_);
-  }
-
-  Mesh TriangleWrapper::triangulate(
+  Mesh TriangleWrapper::triangulate_loop(
     std::vector<std::vector<std::vector<Eigen::Vector3d>>> const& loops,
     double L_target
   ) {
     // Prepare the input struct
-    triangleio in{};
+    struct triangulateio in{}, out{};
     std::map<std::pair<double, double>, int> index;
     std::vector<std::array<double, 2>> pts2D;
     std::vector<std::pair<int, int>> segs;
@@ -53,7 +44,7 @@ namespace libcdgbs {
 
           segs.emplace_back(ia, ib);
 
-          if(si == loop.size() - 1 && i == sub.size() - 3) { // closing loop at last subcurve
+          if (si == loop.size() - 1 && i == sub.size() - 3) { // closing loop at last subcurve
             auto nextP = loop.front().front();
             std::pair<double, double> key{ nextP.x(), nextP.y() };
             int idx = index[key];
@@ -62,7 +53,7 @@ namespace libcdgbs {
         }
       }
       cog /= num_pts;
-      if(loop_idx > 0) { // skip first loop
+      if (loop_idx > 0) { // skip first loop
         holes.push_back(cog);
       }
       // // close the loop
@@ -78,7 +69,7 @@ namespace libcdgbs {
 
     // fill in.pointlist
     in.numberofpoints = int(pts2D.size());
-    in.pointlist = (REAL*)std::malloc(in.numberofpoints * 2 * sizeof(REAL));
+    in.pointlist = (double*)std::malloc(in.numberofpoints * 2 * sizeof(double));
     for (int i = 0; i < in.numberofpoints; ++i) {
       in.pointlist[2 * i] = pts2D[i][0];
       in.pointlist[2 * i + 1] = pts2D[i][1];
@@ -91,31 +82,37 @@ namespace libcdgbs {
       in.segmentlist[2 * i] = segs[i].first;
       in.segmentlist[2 * i + 1] = segs[i].second;
     }
+    in.segmentmarkerlist = nullptr;
 
-    in.numberofholes = int(holes.size());
-    in.holelist = (REAL*)std::malloc(in.numberofholes * 2 * sizeof(REAL));
-    for (int i = 0; i < in.numberofholes; ++i) {
-      in.holelist[2 * i] = holes[i].x();
-      in.holelist[2 * i + 1] = holes[i].y();
+    if (holes.size() > 0) {
+      in.numberofholes = int(holes.size());
+      in.holelist = (double*)std::malloc(in.numberofholes * 2 * sizeof(double));
+      for (int i = 0; i < in.numberofholes; ++i) {
+        in.holelist[2 * i] = holes[i].x();
+        in.holelist[2 * i + 1] = holes[i].y();
+      }
     }
+    in.numberofregions = 0;
 
-    // 1) triangulate using the wo80 API
+    out.pointlist = nullptr;
+    out.pointattributelist = nullptr;
+    out.pointmarkerlist = nullptr;
+    out.trianglelist = nullptr;
+    out.triangleattributelist = nullptr;
+    out.segmentlist = nullptr;
+    out.segmentmarkerlist = nullptr;
+
+    // 1) Call triangle 
     // Recompute options for this run: no‐Steiner on loops + quality + area limit
     double A = (std::sqrt(3.0) / 4.0) * L_target * L_target;
     std::ostringstream opts;
-    opts << "VpzYq20a" << A;
-    std::string s = opts.str();
-    triangle_context_destroy(ctx_);
-    ctx_ = triangle_context_create();
-    triangle_context_options(ctx_, const_cast<char*>(s.c_str()));
-    int status = triangle_mesh_create(ctx_, &in);
+    opts << "QpzYDq20a" << A;
+    triangulate(const_cast<char*>(opts.str().c_str()), &in, &out,
+      (struct triangulateio*)nullptr);
+
     // std::cout << "Triangle status code: " << status << std::endl;
 
-    // 2) Copy it out into a standard triangleio
-    triangleio out{};
-    triangle_mesh_copy(ctx_, &out, /*edges=*/1, /*neighbors=*/0);
-
-    // 3) Build an OpenMesh TriMesh
+    // 2) Build an OpenMesh TriMesh
     Mesh mesh;
     std::vector<Mesh::VertexHandle> vh;
     vh.reserve(out.numberofpoints);
@@ -133,37 +130,39 @@ namespace libcdgbs {
         vh[out.trianglelist[3 * i + 2]]
         });
     }
-    
+
     // Garbage collection to remove deleted faces
     mesh.request_face_status();
     mesh.request_vertex_status();
+    mesh.request_edge_status();
+    mesh.request_halfedge_status();
     // Detect and split boundary triangles
     std::vector<Mesh::FaceHandle> faces_to_split;
     for (auto f : mesh.faces()) {
       bool all_boundary = true;
       std::vector<Mesh::VertexHandle> face_vertices;
       for (auto v : mesh.fv_range(f)) {
-      face_vertices.push_back(v);
-      if (!mesh.is_boundary(v)) {
-        all_boundary = false;
-        break;
-      }
+        face_vertices.push_back(v);
+        if (!mesh.is_boundary(v)) {
+          all_boundary = false;
+          break;
+        }
       }
       if (all_boundary) {
-      faces_to_split.push_back(f);
+        faces_to_split.push_back(f);
       }
     }
 
     for (auto f : faces_to_split) {
       std::vector<Mesh::VertexHandle> face_vertices;
       for (auto v : mesh.fv_range(f)) {
-      face_vertices.push_back(v);
+        face_vertices.push_back(v);
       }
 
       // Compute centroid
-      OpenMesh::Vec3f centroid(0.0f, 0.0f, 0.0f);
+      Mesh::Point centroid(0.0f, 0.0f, 0.0f);
       for (auto v : face_vertices) {
-      centroid += mesh.point(v);
+        centroid += mesh.point(v);
       }
       centroid /= 3.0f;
 
@@ -173,23 +172,29 @@ namespace libcdgbs {
       // Replace the original face with three new faces
       mesh.delete_face(f, false);
       for (size_t i = 0; i < 3; ++i) {
-      mesh.add_face(face_vertices[i], face_vertices[(i + 1) % 3], centroid_vh);
+        mesh.add_face(face_vertices[i], face_vertices[(i + 1) % 3], centroid_vh);
       }
     }
     mesh.garbage_collection();
 
     //Checking if any vertex is orphaned
-    for(auto v : mesh.vertices()) {
-      if(mesh.is_isolated(v)) {
+    for (auto v : mesh.vertices()) {
+      if (mesh.is_isolated(v)) {
         std::cout << "Orphaned vertex: " << "idx " << v.idx() << ", (x,y,z)" << mesh.point(v) << std::endl;
       }
     }
 
     // 4) Clean up
-    triangle_free(in.pointlist);
-    triangle_free(in.segmentlist);
-    triangle_free(out.pointlist);
-    triangle_free(out.trianglelist);
+    free(in.pointlist);
+    free(in.segmentlist);
+    free(in.holelist);
+    trifree(reinterpret_cast<int*>(out.pointlist));
+    trifree(reinterpret_cast<int*>(out.pointattributelist));
+    trifree(out.pointmarkerlist);
+    trifree(out.trianglelist);
+    trifree(reinterpret_cast<int*>(out.triangleattributelist));
+    trifree(out.segmentlist);
+    trifree(out.segmentmarkerlist);
 
     return mesh;
   }

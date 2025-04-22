@@ -28,9 +28,15 @@ include_directories(external/eigen)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 # Triangle (build subdir with known output location)
-set(TRIANGLE_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/Triangle/src)
+set(TRIANGLE_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/Triangle)
 set(TRIANGLE_BINARY_DIR ${CMAKE_BINARY_DIR}/triangle_build)
 add_subdirectory(${TRIANGLE_SOURCE_DIR} ${TRIANGLE_BINARY_DIR})
+# ---- After pulling in the libigl triangle subdir ----
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  # Make the pointer→unsigned long casts only warnings
+  target_compile_options(triangle PRIVATE -fpermissive)
+endif()
+
 
 set(LIBGEOM_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/libgeom)
 set(OPENMESH_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/OpenMesh/src)
@@ -69,8 +75,7 @@ target_include_directories(libcdgbs
     PRIVATE
         ${OPENMESH_SOURCE_DIR}
         ${LIBGEOM_SOURCE_DIR}
-        ${TRIANGLE_SOURCE_DIR}/Triangle
-        ${TRIANGLE_BINARY_DIR}/Triangle  # This is where triangle_export.h lives
+        ${TRIANGLE_SOURCE_DIR}
 )
 
 if(WIN32)
@@ -81,7 +86,6 @@ endif()
 # 🔗 Link libraries
 target_link_libraries(libcdgbs
     triangle
-    triangle-api
     OpenMeshCore
     OpenMeshTools
     geom
@@ -101,7 +105,7 @@ target_include_directories(libcdgbs_test
     PRIVATE
         ${OPENMESH_SOURCE_DIR}
         ${LIBGEOM_SOURCE_DIR}
-        ${TRIANGLE_BINARY_DIR}/Triangle
+        ${TRIANGLE_BINARY_DIR}
 )
 
 if(WIN32)

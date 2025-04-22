@@ -36,13 +36,11 @@ namespace libcdgbs {
     for (size_t loop = 0; loop < gbs.num_loops; ++loop) {
       for (size_t side = 0; side < gbs.num_sides[loop]; ++side) {
         for (auto v : gbs.meshDomain.vertices()) {
-          auto pt = gbs.meshDomain.point(v);
           auto h = gbs.h_coords[v.idx()][loop][side];
           gbs.meshDomain.point(v)[2] = h*diag;
         }
         gbs.writeOBJ(gbs.meshDomain, std::string("h") + std::to_string(loop) + std::to_string(side) + std::string(".obj"));
         for (auto v : gbs.meshDomain.vertices()) {
-          auto pt = gbs.meshDomain.point(v);
           auto s = gbs.s_coords[v.idx()][loop][side];
           gbs.meshDomain.point(v)[2] = s*diag;
         }
@@ -50,7 +48,6 @@ namespace libcdgbs {
       }
     }
     for (auto v : gbs.meshDomain.vertices()) {
-      auto pt = gbs.meshDomain.point(v);
       gbs.meshDomain.point(v)[2] = 0.0;
     }
 

@@ -34,8 +34,6 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
 {
   ribbons = ribbon_surfs;
 
-  int ret_code = 0;
-
   num_loops = ribbons.size();
   num_sides.resize(num_loops);
   num_rows.resize(num_loops);
@@ -152,7 +150,7 @@ bool SurfGBS::compute_domain_boundary()
 bool SurfGBS::compute_domain_mesh()
 {
   auto triangle_wrapper = TriangleWrapper();
-  meshDomain = triangle_wrapper.triangulate(domain_boundary_curves, target_length);
+  meshDomain = triangle_wrapper.triangulate_loop(domain_boundary_curves, target_length);
 
   domain_boundary_vertices.clear();
   domain_boundary_vertices.resize(num_loops);
@@ -280,7 +278,7 @@ double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, 
   const auto beta = pow(hp1, p) / (pow(hp1, p) + pow(h, p));
 
   double mu = 1.0;
-  if (hm1 < eps && h < eps || h < eps && hp1 < eps) {
+  if ((hm1 < eps && h < eps) || (h < eps && hp1 < eps)) {
     mu = 0.5;
   }
   else {

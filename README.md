@@ -3,7 +3,7 @@
 **libcdgbs** is a cross-platform C++ library implementing Curved Domain Generalized B-Spline (CD-GBS) patches. It is built using CMake and supports external libraries including:
 
 - [Eigen](https://gitlab.com/libeigen/eigen.git)
-- [Triangle](https://github.com/wo80/Triangle)
+- [Triangle](https://github.com/libigl/triangle)
 - [OpenMesh](https://www.graphics.rwth-aachen.de:9000/OpenMesh/OpenMesh)
 - [libgeom](https://github.com/salvipeter/libgeom)
 
@@ -17,7 +17,6 @@
 - CMake 3.15+
 - GCC / Clang / MSVC
 - Git (for cloning submodules)
-
 
 ## 🧱 Build Instructions
 

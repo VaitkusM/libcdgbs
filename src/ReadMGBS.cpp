@@ -32,11 +32,11 @@ bool SurfGBS::readMGBS(const std::string& filename, double target_length)
   num_sides.resize(num_loops);
   num_rows.resize(num_loops);
   num_cols.resize(num_loops);
-  for (int loop = 0; loop < num_loops; ++loop) {
+  for (size_t loop = 0; loop < num_loops; ++loop) {
     in >> num_sides[loop];                // <# of ribbons in loop li>
     num_rows[loop].resize(num_sides[loop]);
     num_cols[loop].resize(num_sides[loop]);
-    for (int side = 0; side < num_sides[loop]; ++side) {
+    for (size_t side = 0; side < num_sides[loop]; ++side) {
       int degH, degS, nLayers, zero;
       in >> degH >> degS >> nLayers >> zero;
       // ensure consistency: degH == nLayers-1
