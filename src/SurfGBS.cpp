@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "libcdgbs/SurfGBS.hpp"
 #include "libcdgbs/LoopFlattener.hpp"
 #include "libcdgbs/TriangleWrapper.hpp"
@@ -68,10 +70,30 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   SurfGBS::target_length = target_length;
 }
 
+[[maybe_unused]]
+static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > loops,
+                       std::string filename) {
+  size_t index = 1;
+  std::ofstream f("/tmp/boundary.obj");
+  for (const auto &loop : loops)
+    for (const auto &curve : loop) {
+      size_t start = index;
+      for (const auto &p : curve) {
+        f << "v " << p[0] << ' ' << p[1] << " 0" << std::endl;
+        index++;
+      }
+      f << 'l';
+      for (size_t i = start; i < index; ++i)
+        f << ' ' << i;
+      f << std::endl;
+    }
+}
+
 void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh)
 {
   load_ribbons(ribbon_surfs, target_length);
   compute_domain_boundary();
+  // writeLoops(domain_boundary_curves, "/tmp/boundary.obj");
   compute_domain_mesh();
   compute_local_parameters();
   compute_blend_functions();
