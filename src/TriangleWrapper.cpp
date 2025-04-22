@@ -105,6 +105,8 @@ namespace libcdgbs {
     std::ostringstream opts;
     opts << "VpzYq20a" << A;
     std::string s = opts.str();
+    triangle_context_destroy(ctx_);
+    ctx_ = triangle_context_create();
     triangle_context_options(ctx_, const_cast<char*>(s.c_str()));
     int status = triangle_mesh_create(ctx_, &in);
     // std::cout << "Triangle status code: " << status << std::endl;
