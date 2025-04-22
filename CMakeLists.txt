@@ -3,6 +3,12 @@ project(libcdgbs)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+  set(CMAKE_CXX_FLAGS "-Wall -Wno-volatile -fPIC -Wno-reorder")
+  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG -fsanitize=address")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -DNDEBUG")
+endif(CMAKE_COMPILER_IS_GNUCXX)
+
 # ---- External Libraries ----
 
 # Eigen (header-only)
