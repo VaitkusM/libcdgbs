@@ -3,11 +3,22 @@ project(libcdgbs)
 
 set(CMAKE_CXX_STANDARD 17)
 
-if(CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "-Wall -Wno-volatile -fPIC -Wno-reorder")
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG -fsanitize=address")
+# ---- Compiler Flags ----
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  # Common warning and PIC flags
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-volatile -Wno-reorder -fPIC")
+
+  # Debug build flags
+  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
+  if (NOT WIN32)
+    # Enable AddressSanitizer on non-Windows platforms only
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
+  endif()
+
+  # Release build flags
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -DNDEBUG")
-endif(CMAKE_COMPILER_IS_GNUCXX)
+endif()
 
 # ---- External Libraries ----
 
