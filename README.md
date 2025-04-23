@@ -9,7 +9,8 @@
 
 ## ✨ Features
 
-- ???
+- Usable via libgeom-based API & file import.
+- Export into OpenMesh format.
 
 ## 🧰 Requirements
 

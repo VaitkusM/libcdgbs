@@ -1,0 +1,27 @@
+.mgbs (Multiloop Generalized B-Spline) format:
+
+<# of loops : int>
+<# of ribbons in loop 1 : int>
+<h-degree of side (1,1) : int> <s-degree of side (1,1) : int> <# of layers of side (1,1) : int> 0
+<knot 1 of side (1,1)> ... <knot k of side (1,1)>
+<C^11_{0,0} : double x 3>
+<C^11_{0,1} : double x 3>
+...
+<C^11_{0,n_{11}} : double x 3>
+<C^11_{1,0} : double x 3>
+...
+<C^11_{l_{11}-1,n_{11}} : double x 3>
+<h-degree of side (1,2) : int> <s-degree of side (1,2) : int> <# of layers of side (1,2) : int> 0
+<knot 1 of side (1,2)> ... <knot k of side (1,2)>
+<C^12_{0,0} : double x 3>
+...
+<C^12_{l_{12}-1,n_{12}} : double x 3>
+<# of ribbons in loop 2 : int>
+<h-degree of side (2,1) : int> <s-degree of side (2,1) : int> <# of layers of side (2,1) : int> 0
+<knot 1 of side (1,2)> ... <knot k of side (2,1)>
+<C^21_{0,0} : double x 3>
+...
+<C^21_{l_{21}-1,n_{21}} : double x 3>
+...
+<Side resolution: int> <Mesh resolution : int> 10
+
