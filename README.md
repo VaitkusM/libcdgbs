@@ -108,7 +108,7 @@ MIT License. See [LICENSE](LICENSE) for full details.
 @misc{libcdgbs,
   title = {libcdgbs: Cross-platform C++ library for Curved Domain Generalized B-Spline (CD-GBS) patches},
   howpublished = {\\url{https://github.com/YOUR_USERNAME/libcdgbs}},
-  year = {2025},
-  note = {Version 0.1.0}
+  author={M{\'a}rton Vaitkus},
+  year = {2025}
 }
 ```
