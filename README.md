@@ -1,6 +1,6 @@
 # libcdgbs
 
-**libcdgbs** is a cross-platform C++ library implementing Curved Domain Generalized B-Spline (CD-GBS) patches. It is built using CMake and supports external libraries including:
+**libcdgbs** is a cross-platform C++ library implementing [Curved Domain Generalized B-Spline (CD-GBS) patches](https://doi.org/10.1016/j.cagd.2021.102019). It is built using CMake and supports external libraries including:
 
 - [Eigen](https://gitlab.com/libeigen/eigen.git)
 - [Triangle](https://github.com/libigl/triangle)
@@ -72,9 +72,43 @@ libcdgbs/
 ├── CMakeLists.txt     # Main build config
 └── README.md
 ```
+---
+## 📝 To-Do
 
+- [ ] Multi-loop
+- [ ] Support filetypes:
+  - [x] MGBS
+  - [ ] NGBS
+  - [ ] CGB
+  - [ ] GBS
+  - [ ] MLP
+  - [ ] GBP
+- [ ] Templates
 ---
 
 ## 📜 License
 
 MIT License. See [LICENSE](LICENSE) for full details.
+
+## 📚 References
+
+```bibtex
+@article{vaitkus2021multisided,
+  author = {M{\'a}rton Vaitkus and Tam{\'a}s V{\'a}rady and P{\'e}ter Salvi and {\'A}goston Sipos},
+  title = {Multi-sided B-spline surfaces over curved, multi-connected domains},
+  journal = {Computer Aided Geometric Design},
+  volume = {89},
+  pages = {102019},
+  year = {2021},
+  publisher = {Elsevier},
+  doi = {10.1016/j.cagd.2021.102019},
+  url = {https://doi.org/10.1016/j.cagd.2021.102019}
+}
+
+@misc{libcdgbs,
+  title = {libcdgbs: Cross-platform C++ library for Curved Domain Generalized B-Spline (CD-GBS) patches},
+  howpublished = {\\url{https://github.com/YOUR_USERNAME/libcdgbs}},
+  year = {2025},
+  note = {Version 0.1.0}
+}
+```
