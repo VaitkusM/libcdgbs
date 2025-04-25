@@ -1,0 +1,18 @@
+.mlp (Multiloop Bézier) formátum:
+
+<# of loops : int>
+<# of sides in loop 1 : int>
+<# of CPs in loop 1, side 1 : int>
+0 0 <C^11_{0,0} : double x 3> <C^11_{0,1} : double x 3>
+0 0 <C^11_{1,0} : double x 3> <C^11_{1,1} : double x 3>
+...
+0 0 <C^11_{d_1,0} : double x 3> <C^11_{d_1,0} : double x 3>
+<# of CPs in loop 1, side 2 : int>
+0 0 <C^12_{0,0} : double x 3> <C^12_{0,1} : double x 3>
+...
+<# of sides in loop 2 : int>
+<# of CPs in loop 2, side 1 : int>
+0 0 <C^21_{0,0} : double x 3> <C^21_{0,1} : double x 3>
+...
+
+
