@@ -139,7 +139,7 @@ Curve3D LoopFlattener::developLoop(const Curve3D& curves, const Curve3D& normals
       curr_pos
     );
 
-    curr_pos = curv.back();
+    curr_pos = developedCurves[side].back();
     auto corner_angle = GeomUtil::getAngle(
       curv_p1[1] - curv_p1[0],
       curv[curv.size() - 2] - curv[curv.size() - 1],
