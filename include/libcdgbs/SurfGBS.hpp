@@ -40,6 +40,7 @@ namespace libcdgbs {
     std::vector<std::vector<std::vector<double> > > h_coords;
     std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > > blend_functions;
 
+    bool debug_outputs = false;
 
     SurfGBS();
 
@@ -58,7 +59,11 @@ namespace libcdgbs {
 
     bool compute_harmonic_parameters();
 
-
+    void projectCurves2Domain(
+      const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz, 
+      std::vector<std::vector<Eigen::Vector3d>>& curves_uv
+    ) const;
+    Eigen::Vector3d project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandle ff) const;
 
     size_t prev(size_t loop, size_t side) const;
     size_t next(size_t loop, size_t side) const;

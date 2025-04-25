@@ -73,18 +73,21 @@ libcdgbs/
 ├── CMakeLists.txt     # Main build config
 └── README.md
 ```
+
 ---
+
 ## 📝 To-Do
 
-- [ ] Multi-loop
+- [x] Multi-loop
 - [ ] Support filetypes:
   - [x] MGBS
   - [ ] NGBS
   - [ ] CGB
   - [ ] GBS
-  - [ ] MLP
+  - [x] MLP
   - [ ] GBP
 - [ ] Templates
+
 ---
 
 ## 📜 License

@@ -43,6 +43,32 @@ namespace GeomUtil {
     bool loop = false
   );
 
+
+  Vector vectorArea(const std::vector<Vector>& pts);
+  Vector vectorArea(const std::vector<std::vector<Vector> >& loop);
+  Vector centroid(const std::vector<Vector>& pts);
+  Vector centroid(const std::vector<std::vector<Vector> >& loop);
+  void shiftByVector(std::vector<Vector>& loop, Vector vv);
+  void shiftByVector(std::vector<std::vector<Vector> >& loop, Vector vv);
+  void alignPointSets(std::vector<Vector>& source, const std::vector<Vector>& target);
+  void alignPointSets(std::vector<std::vector<Vector> >& source, const std::vector<std::vector<Vector> >& target);
+  void alignCurveLoopPCA(const std::vector<std::vector<Vector> >& pts, std::vector<std::vector<Vector> >& pts_aligned, bool shift_cog);
+  
+  void completeOrthoFrame(
+    Vector  v0,
+    Vector  v1,
+    Vector& v2,
+    bool    right_handed = true
+  );
+
+  void getPrincipalAxes(
+    const std::vector<std::vector<Vector> >& curves,
+    Vector& xx,
+    Vector& yy,
+    Vector& zz,
+    Vector& cog
+  );
+
   inline size_t circular_index(size_t i, int offset, size_t n) {
     return (i + n + (offset % static_cast<int>(n))) % n;
   }

@@ -3,6 +3,7 @@
 #include "libcdgbs/SurfGBS.hpp"
 #include "libcdgbs/LoopFlattener.hpp"
 #include "libcdgbs/TriangleWrapper.hpp"
+#include "libcdgbs/GeomUtil.hpp"
 
 using namespace libcdgbs;
 using Vec3 = Eigen::Vector3d;
@@ -71,14 +72,14 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
 
 [[maybe_unused]]
 static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > loops,
-                       std::string filename) {
+  std::string filename = "/tmp/boundary.obj") {
   size_t index = 1;
-  std::ofstream f("/tmp/boundary.obj");
-  for (const auto &loop : loops)
-    for (const auto &curve : loop) {
+  std::ofstream f(filename);
+  for (const auto& loop : loops)
+    for (const auto& curve : loop) {
       size_t start = index;
-      for (const auto &p : curve) {
-        f << "v " << p[0] << ' ' << p[1] << " 0" << std::endl;
+      for (const auto& p : curve) {
+        f << "v " << p[0] << ' ' << p[1] << ' ' << p[2] << std::endl;
         index++;
       }
       f << 'l';
@@ -119,7 +120,7 @@ bool SurfGBS::compute_domain_boundary()
       points[loop][side].resize(res);
       normals[loop][side].resize(res);
       for (size_t i = 0; i < res; ++i) {
-        const double u = double(i) / res;
+        const double u = double(i) / (res - 1);
 
         Geometry::VectorMatrix duv;
         auto pt = rib.eval(u, 0.0, 1, duv);
@@ -133,17 +134,77 @@ bool SurfGBS::compute_domain_boundary()
       }
     }
 
+    // Flip vector ?
+    auto va = GeomUtil::vectorArea(points[loop]);
+    Eigen::Vector3d avg_n(0.0, 0.0, 0.0);
+    size_t num_pts = 0;
+    for (size_t side = 0; side < normals[loop].size(); ++side) {
+      for (size_t ii = 0; ii < normals[loop][side].size(); ++ii) {
+        avg_n += normals[loop][side][ii];
+        num_pts++;
+      }
+    }
+    avg_n /= num_pts;
+    bool flip = loop > 0 && (va.dot(avg_n)) < 0;
+
     developed_boundary_curves[loop] =
-      LoopFlattener::developLoop(points[loop], normals[loop]);
+      LoopFlattener::developLoop(points[loop], normals[loop], flip);
 
-    developed_boundary_curves_normalized[loop] = 
-      LoopFlattener::normalizeLoopAngles(points[loop], normals[loop]);
+    developed_boundary_curves_normalized[loop] =
+      LoopFlattener::normalizeLoopAngles(points[loop], normals[loop], flip);
 
-    domain_boundary_curves[loop] = 
+    domain_boundary_curves[loop] =
       LoopFlattener::closeLoop(developed_boundary_curves_normalized[loop]);
+
+    auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
+    GeomUtil::shiftByVector(domain_boundary_curves[loop], -cog);
+    // GeomUtil::shiftByVector(developed_boundary_curves_normalized[loop], -cog);
+    // GeomUtil::shiftByVector(developed_boundary_curves[loop], -cog);
+
+    auto aligned = domain_boundary_curves[loop];
+    GeomUtil::alignCurveLoopPCA(domain_boundary_curves[loop], aligned, false);
+    domain_boundary_curves[loop] = aligned;
   }
 
+  if (debug_outputs) {
+    writeLoops(domain_boundary_curves, "boundary_uv_0.obj");
+  }
 
+  if (num_loops > 1) { // Handling inner loops
+    //Computing perimeter surface
+    std::vector<std::vector<Ribbon> > perimeter_ribbons(1, ribbons.front());
+    SurfGBS perimeter_gbs;
+    perimeter_gbs.load_ribbons(perimeter_ribbons, target_length);
+    perimeter_gbs.compute_domain_boundary();
+    perimeter_gbs.compute_domain_mesh();
+    perimeter_gbs.compute_local_parameters();
+    perimeter_gbs.compute_blend_functions();
+    perimeter_gbs.evaluate_mesh(perimeter_gbs.meshSurface, true);
+
+    if (debug_outputs) {
+      writeOBJ(perimeter_gbs.meshSurface, "perimeter.obj");
+    }
+
+    //Projecting inner loops
+    for (size_t loop = 1; loop < num_loops; ++loop) {
+      auto curv_proj = domain_boundary_curves[loop];
+      const auto& curv = points[loop];
+      perimeter_gbs.projectCurves2Domain(curv, curv_proj);
+      if (debug_outputs) {
+        writeLoops({ curv_proj }, std::string("boundary_proj_") + std::to_string(loop) + ".obj");
+      }
+      auto cog = GeomUtil::centroid(curv_proj);
+      GeomUtil::shiftByVector(curv_proj, -cog);
+      GeomUtil::alignPointSets(domain_boundary_curves[loop], curv_proj);
+      GeomUtil::shiftByVector(domain_boundary_curves[loop], cog);
+    }
+  }
+
+  if (debug_outputs) {
+    writeLoops(domain_boundary_curves, "boundary_uv_1.obj");
+    writeLoops(developed_boundary_curves, "boundary_developed.obj");
+    writeLoops(points, "boundary_xyz.obj");
+  }
 
   return true;
 }
@@ -259,6 +320,11 @@ bool SurfGBS::evaluate_mesh(Mesh& mesh, bool reset)
     mesh.point(mesh.vertex_handle(v.idx())) = pt;
   }
 
+  mesh.request_face_normals();
+  mesh.update_face_normals();
+  mesh.request_vertex_normals();
+  mesh.update_vertex_normals();
+
   return true;
 }
 
@@ -293,6 +359,50 @@ double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, 
 
   return mu;
 
+}
+
+void SurfGBS::projectCurves2Domain(
+  const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz,
+  std::vector<std::vector<Eigen::Vector3d>>& curves_uv
+) const {
+  if (meshDomain.n_faces() != meshSurface.n_faces() || meshDomain.n_faces() == 0) {
+    return;
+  }
+  curves_uv.clear();
+  curves_uv.resize(curves_xyz.size());
+  for (size_t side = 0; side < curves_xyz.size(); ++side) {
+    size_t num_pts = curves_xyz[side].size();
+    curves_uv[side].resize(num_pts);
+    for (size_t ii = 0; ii < num_pts; ++ii) {
+      Eigen::Vector3d pt = curves_xyz[side][ii];
+      auto closest_f = meshSurface.findClosestFace({ pt[0], pt[1], pt[2] });
+      curves_uv[side][ii] = project2Triangle_uv(pt, closest_f);
+    }
+  }
+}
+
+Eigen::Vector3d SurfGBS::project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandle ff) const
+{
+  auto f = meshSurface.make_smart(ff);
+  auto v1 = f.halfedge().to();
+  auto v2 = f.halfedge().next().to();
+  auto v3 = f.halfedge().next().next().to();
+  auto p1_xyz = meshSurface.point(v1);
+  auto p2_xyz = meshSurface.point(v2);
+  auto p3_xyz = meshSurface.point(v3);
+  auto p1_uv = meshDomain.point(v1);
+  auto p2_uv = meshDomain.point(v2);
+  auto p3_uv = meshDomain.point(v3);
+
+  // Project point to the plane of the triangle
+  auto pp = Mesh::Point(pt[0], pt[1], pt[2]) - (meshSurface.normal(ff) | (Mesh::Point(pt[0], pt[1], pt[2]) - p1_xyz)) * meshSurface.normal(ff);
+
+  // Barycentric coordinates
+  double u, v, w;
+  Mesh::barycentricCoordinates(pp, p1_xyz, p2_xyz, p3_xyz, u, v, w);
+
+  auto pt_uv = u * p1_uv + v * p2_uv + w * p3_uv;
+  return { pt_uv[0], pt_uv[1], 0.0 };
 }
 
 inline size_t circular_index(size_t i, int offset, size_t n) {

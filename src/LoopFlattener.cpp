@@ -99,7 +99,7 @@ double LoopFlattener::integrateCurvature(
 
 
 
-Curve3D LoopFlattener::developLoop(const Curve3D& curves, const Curve3D& normals) {
+Curve3D LoopFlattener::developLoop(const Curve3D& curves, const Curve3D& normals, bool flipped) {
   Curve3D developedCurves(curves.size());
 
   double curr_angle = 0.0;
@@ -113,8 +113,6 @@ Curve3D LoopFlattener::developLoop(const Curve3D& curves, const Curve3D& normals
 
     DoubleVector edge_lengths(num_pts - 1, 1.0 / (num_pts - 1.0));
     DoubleVector curvatures(num_pts - 2, 0.0);
-
-    bool flipped = false;
 
     getEdgeLengths(
       curv,

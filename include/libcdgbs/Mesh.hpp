@@ -7,5 +7,17 @@ namespace libcdgbs {
     using Normal = OpenMesh::Vec3d;
     using TexCoord2D = OpenMesh::Vec2d;
   };
-  using Mesh = OpenMesh::TriMesh_ArrayKernelT<MeshTraits>;
+  class Mesh : public OpenMesh::TriMesh_ArrayKernelT<MeshTraits> { 
+  public:
+    FaceHandle findClosestFace(Point pt) const;
+    double dist2Face(Point pt, FaceHandle ff) const;
+
+    static void barycentricCoordinates(
+      const Point& pt,
+      const Point& p1,
+      const Point& p2,
+      const Point& p3,
+      double& u, double& v, double& w
+    );
+  };
 }

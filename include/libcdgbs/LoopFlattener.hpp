@@ -13,7 +13,7 @@ namespace libcdgbs {
     using DoubleVector = std::vector<double>;
     // Main method: takes input curves (each composed of sub-curves) and associated normals
     // Returns flattened curves into the XY plane (z = 0)
-    static Curve3D developLoop(const Curve3D& curve_loop, const Curve3D& normals);
+    static Curve3D developLoop(const Curve3D& curve_loop, const Curve3D& normals, bool flipped = false);
     static Curve3D normalizeLoopAngles(const Curve3D& curve_loop, const Curve3D& normals, bool flipped = false);
     static Curve3D closeLoop(const Curve3D& curve_loop);
     static void getGeodesicCurvatures(
