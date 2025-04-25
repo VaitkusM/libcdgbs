@@ -86,39 +86,6 @@ bool SurfGBS::readMGBS(const std::string& filename, double target_length)
   }
 
   load_ribbons(ribbons, target_length);
-  // side_res.clear();
-  // side_res.resize(num_loops);
-  // for (size_t loop = 0; loop < num_loops; ++loop) {
-  //   side_res[loop].resize(num_sides[loop], sideRes);
-  // }
-
-
-  // // Set number of samples based on target edge length
-  // for( size_t loop = 0; loop < num_loops; ++loop) {
-  //   for(size_t side = 0; side < num_sides[loop]; ++side) {
-  //     auto rib = ribbons[loop][side];
-  //     auto curve_length = getLength(rib);
-      
-  //     auto num_samples = std::max(1.0, curve_length / target_length);
-  //     side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
-  //   }
-  // }
-
-  // domain_boundary_curves.clear();
-  // domain_boundary_curves.resize(num_loops);
-  // for(size_t loop = 0; loop < num_loops; ++loop) {
-  //   domain_boundary_curves[loop].resize(num_sides[loop]);
-  //   for(size_t side = 0; side < num_sides[loop]; ++side) {
-  //     domain_boundary_curves[loop][side].resize(side_res[loop][side]);
-  //     const auto& rib = ribbons[loop][side];
-  //     for(size_t i = 0; i < side_res[loop][side]; ++i) {
-  //       auto u = double(i)/(side_res[loop][side] - 1);
-  //       auto pt = rib.eval(u, 0.0);
-  //       domain_boundary_curves[loop][side][i] = { pt[0], pt[1], pt[2] };
-  //       std::cout << domain_boundary_curves[loop][side][i][0] << ", "  << domain_boundary_curves[loop][side][i][1] << std::endl;
-  //     }
-  //   }
-  // }
 
   return true;
 }
