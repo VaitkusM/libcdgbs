@@ -47,6 +47,7 @@ namespace libcdgbs {
     void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh);
 
     bool readMGBS(const std::string& filename, double target_length = 3.0);
+    bool readMLP(const std::string& filename, double target_length = 3.0);
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
 
     bool compute_domain_boundary();
