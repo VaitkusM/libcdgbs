@@ -41,12 +41,13 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   side_res.resize(num_loops);
   deg_h.resize(num_loops);
   for (size_t loop = 0; loop < num_loops; ++loop) {
-    num_sides[loop] = ribbons[loop].size();
-    deg_h[loop].resize(ribbons[loop].size(), 3);
-    num_rows[loop].resize(ribbons[loop].size());
-    num_cols[loop].resize(ribbons[loop].size());
-    side_res[loop].resize(ribbons[loop].size());
-    for (size_t side = 0; side < ribbons[loop].size(); ++side) {
+    const size_t ns = ribbons[loop].size();
+    num_sides[loop] = ns;
+    deg_h[loop].resize(ns, 3);
+    num_rows[loop].resize(ns);
+    num_cols[loop].resize(ns);
+    side_res[loop].resize(ns);
+    for (size_t side = 0; side < ns; ++side) {
       //NUmber of B-spline control points in U and V directions
       num_rows[loop][side] = ribbons[loop][side].basisV().knots().size() - ribbons[loop][side].basisV().degree() - 1;
       num_cols[loop][side] = ribbons[loop][side].basisU().knots().size() - ribbons[loop][side].basisU().degree() - 1;
