@@ -131,13 +131,6 @@ void MatrixUtil::addConstraint2RHS(
     rhs.conservativeResize(num_rows_old + num_cons, std::max(num_cols_old, (size_t)1));
   }
 
-  SampledCurve pts(num_cons);
-  for (size_t ii = 0; ii < num_cons; ++ii) {
-    auto pt = mesh.point(fixed_vertices[ii]);
-    pts[ii] = { pt[0], pt[1], pt[2] };
-  }
-
-
   for (size_t ii = 0; ii < num_cons; ++ii) {
     double value;
     if (ramp) {
