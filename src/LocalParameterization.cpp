@@ -55,7 +55,6 @@ bool SurfGBS::compute_harmonic_parameters()
   size_t num_vert = mesh.n_vertices();
 
   SparseMatrix QQ(num_vert, num_vert);
-  DenseMatrix pp = DenseMatrix::Zero(num_vert, 1);
 
   buildMatrixVertexLaplace(mesh, QQ);
 
@@ -74,6 +73,7 @@ bool SurfGBS::compute_harmonic_parameters()
 
     size_t num_cons = sides_pts.size();
     SparseMatrix Ch(num_cons, num_vert), KKT;
+    DenseMatrix pp = DenseMatrix::Zero(num_vert, num_sides_all);
     DenseMatrix dh = DenseMatrix::Ones(num_cons, num_sides_all);
     DenseMatrix rhs, x;
 
@@ -206,6 +206,7 @@ bool SurfGBS::compute_harmonic_parameters()
 
       size_t num_cons = sides_pts.size();
       SparseMatrix CC(num_cons, num_vert), KKT;
+      DenseMatrix pp = DenseMatrix::Zero(num_vert, 1);
       DenseMatrix dd;
       DenseMatrix rhs, x;
 
