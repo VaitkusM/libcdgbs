@@ -52,13 +52,15 @@ bool SurfGBS::compute_harmonic_parameters()
   }
 
   auto& mesh = meshDomain;
-  size_t num_vert = mesh.n_vertices();
+  const size_t num_vert = mesh.n_vertices();
 
   SparseMatrix QQ(num_vert, num_vert);
 
   buildMatrixVertexLaplace(mesh, QQ);
 
-  size_t num_sides_all = std::accumulate(num_sides.begin(), num_sides.end(), 0);
+  const size_t num_sides_all = std::accumulate(num_sides.begin(), num_sides.end(), 0);
+
+  const bool three_sided = (num_loops == 1) && (num_sides_all == 3);
 
   { // Compute h-coordinates
     std::vector<VertexHandle> sides_pts;
@@ -71,7 +73,7 @@ bool SurfGBS::compute_harmonic_parameters()
       }
     }
 
-    size_t num_cons = sides_pts.size();
+    const size_t num_cons = sides_pts.size();
     SparseMatrix Ch(num_cons, num_vert), KKT;
     DenseMatrix pp = DenseMatrix::Zero(num_vert, num_sides_all);
     DenseMatrix dh = DenseMatrix::Ones(num_cons, num_sides_all);
@@ -82,8 +84,8 @@ bool SurfGBS::compute_harmonic_parameters()
     size_t idx = 0;
     for (size_t loop = 0; loop < num_loops; ++loop) {
       for (size_t side = 0; side < num_sides[loop]; ++side) {
-        size_t side_m1 = prev(loop, side);
-        size_t side_p1 = next(loop, side);
+        const size_t side_m1 = prev(loop, side);
+        const size_t side_p1 = next(loop, side);
         std::vector<VertexHandle> side_pts;
         std::vector<VertexHandle> side_pts_m1;
         std::vector<VertexHandle> side_pts_p1;
@@ -91,11 +93,11 @@ bool SurfGBS::compute_harmonic_parameters()
           auto vtx = domain_boundary_vertices[loop][side][i];
           side_pts.push_back(vtx);
         }
-        for (size_t i = 0; i < domain_boundary_vertices[loop][side_m1].size(); ++i) {
+        for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size(); ++i) {
           auto vtx = domain_boundary_vertices[loop][side_m1][i];
           side_pts_m1.push_back(vtx);
         }
-        for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size(); ++i) {
+        for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
           auto vtx = domain_boundary_vertices[loop][side_p1][i];
           side_pts_p1.push_back(vtx);
         }
@@ -170,8 +172,8 @@ bool SurfGBS::compute_harmonic_parameters()
   for (size_t loop = 0; loop < num_loops; ++loop) {
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       // std::cout << "Computing s-coordinates for loop " << loop << " side " << side << std::endl;
-      size_t side_m1 = prev(loop, side);
-      size_t side_p1 = next(loop, side);
+      const size_t side_m1 = prev(loop, side);
+      const size_t side_p1 = next(loop, side);
       std::vector<VertexHandle> side_pts;
       std::vector<VertexHandle> side_pts_m1;
       std::vector<VertexHandle> side_pts_p1;
@@ -179,11 +181,11 @@ bool SurfGBS::compute_harmonic_parameters()
         auto vtx = domain_boundary_vertices[loop][side][i];
         side_pts.push_back(vtx);
       }
-      for (size_t i = 0; i < domain_boundary_vertices[loop][side_m1].size() - 1; ++i) {
+      for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size() - 1; ++i) {
         auto vtx = domain_boundary_vertices[loop][side_m1][i];
         side_pts_m1.push_back(vtx);
       }
-      for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size(); ++i) {
+      for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
         auto vtx = domain_boundary_vertices[loop][side_p1][i];
         side_pts_p1.push_back(vtx);
       }
@@ -204,7 +206,7 @@ bool SurfGBS::compute_harmonic_parameters()
 
       // std::cout << "sides_pts size: " << sides_pts.size() << std::endl;
 
-      size_t num_cons = sides_pts.size();
+      const size_t num_cons = sides_pts.size();
       SparseMatrix CC(num_cons, num_vert), KKT;
       DenseMatrix pp = DenseMatrix::Zero(num_vert, 1);
       DenseMatrix dd;
