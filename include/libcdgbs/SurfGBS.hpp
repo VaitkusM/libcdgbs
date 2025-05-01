@@ -49,6 +49,9 @@ namespace libcdgbs {
 
     bool readMGBS(const std::string& filename, double target_length = 3.0);
     bool readMLP(const std::string& filename, double target_length = 3.0);
+    bool readCGB(const std::string& filename, double target_length = 3.0);
+    bool readGBS(const std::string& filename, double target_length = 3.0);
+
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
 
     bool compute_domain_boundary();

@@ -1,0 +1,20 @@
+.cgb (Concave Generalized Bézier) formátum:
+
+<central weight type : int> (fix 0)
+<domain type : int> (fix 3)
+<parameter dilation : double> (fix 0)
+<domain tolerance : double> (fix 0)
+<# of sides : int>
+<central control point : double x 3>
+<1st ribbon degree : int> <1st ribbon # of layers : int>
+<C^1_{0,0} : double x 3>
+<C^1_{1,0} : double x 3>
+...
+<C^1_{d_1,l_1-1} : double x 3>
+<2nd ribbon degree : int> <2nd ribbon # of layers : int>
+<C^2_{0,0} : double x 3>
+...
+<C^n_{d_n,l_n-1} : double x 3>
+...
+<1st multiplier : double> ... <nth multiplier : double> (fix n x 1.0)
+

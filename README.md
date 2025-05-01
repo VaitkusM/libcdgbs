@@ -82,11 +82,13 @@ libcdgbs/
 - [ ] Support filetypes:
   - [x] MGBS
   - [ ] NGBS
-  - [ ] CGB
-  - [ ] GBS
+  - [x] CGB
+  - [x] GBS
   - [x] MLP
   - [ ] GBP
-- [ ] Templates
+- [ ] Interior control point
+- [ ] Ribbon control points
+- [ ] MAT-based interior control
 
 ---
 

@@ -1,0 +1,17 @@
+<central weight type : int> 
+<domain type : int>
+<parameter dilation : double>
+<domain tolerance : double>
+<# of sides : int>
+<central control point : double x 3>  
+<1st ribbon s-degree : int>  <1st ribbon h-degree : int> <1st ribbon # of layers : int>
+<1st ribbon knot 0 : double>  ...  <1st ribbon knot m : double>
+<CP^1_{0,0} : double x 3>
+<CP^1_{1,0} : double x 3>
+...
+<CP^1_{k_1,l_1-1} : double x 3>
+<2nd ribbon s-degree : int>  <2nd ribbon h-degree : int> <2nd ribbon # of layers : int>
+<2nd ribbon knot 0 : double>  ...  <2nd ribbon knot m : double>
+<CP^2_{0,0} : double x 3>
+...
+<C^n_{k_n,l_n-1} : double x 3>  
