@@ -79,9 +79,9 @@ libcdgbs/
 ## 📝 To-Do
 
 - [x] Multi-loop
-- [ ] Support filetypes:
+- [x] Support filetypes:
   - [x] MGBS
-  - [ ] NGBS
+  - [x] NGBS
   - [x] CGB
   - [x] GBS
   - [x] MLP
@@ -89,6 +89,15 @@ libcdgbs/
 - [ ] Interior control point
 - [ ] Ribbon control points
 - [ ] MAT-based interior control
+- [ ] Control vectors
+- [ ] Domain types:
+  - [x] Curved
+  - [ ] Polygonal
+  - [ ] Regular
+- [ ] mu types
+  - [ ] Corner
+  - [ ] Degree elevated
+  - [ ] Middle-1
 
 ---
 

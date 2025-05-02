@@ -1,0 +1,42 @@
+# <skd file name: string> 
+<domain type : int>
+<domain resolution : int>
+<boundary resolution : int>
+<auto h-split flag : 0|1> <angle: double> <ratio: double> 
+<mu type : int>
+<control vector mode : int>
+<# of loops : int>
+<# of sides of loop 0: int>  
+<s-degree : int>  <h-degree : int> <# of layers : int>      # Ribbon {0,0}
+<knot 0 : double>  ...  <knot m : double>
+<h-splits: double x 2>
+<CP_{0,0} : double x 3>
+<CP_{1,0} : double x 3>
+...
+<CP_{k_1,l_1-1} : double x 3>
+<# of ribCPs : int> <RibCP weight : double> <RibCP degree : int>
+[RCP_{0} : double x 3] 
+...
+[RCP_{nrcp-1} double x 3]
+<alphabeta degree : int> 
+<alphabeta knot 0 : double>  ...  <alphabeta knot m : double>
+<alpha CP_0 : double> <beta CP_0 : double> 0 
+<alpha CP_1 : double> <beta CP_1 : double> 0 
+...
+<alpha CP_{n-1} : double> <beta CP_{n-1} : double> 0 
+<# of CVs : int>
+[u_{0} : double] [CV_{0} : double x 3]
+...
+[u_{ncv-1} : double] [CV_{ncv-1} : double x 3]
+<Ribbon {0,1}> ...
+...
+<Ribbon {0,ns0-1}>
+...
+<# of sides of loop nl-1: int>
+<Ribbon {n-1,0}> ...
+...
+<Ribbon {nl-1,ns1-1}>
+<# of interior CPs : int>
+<ICP^{0} : double x 3>
+...
+<ICP^{ni-1} : double x 3>
