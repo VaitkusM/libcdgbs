@@ -78,7 +78,16 @@ libcdgbs/
 
 ## 📝 To-Do
 
-- [x] Multi-loop
+- Patch types:
+  - [x] Generalized Bézier (GB)
+  - [x] Generalized B-spline (GBS)
+  - [ ] Displacement GBS
+  - [ ] Corner GBS
+  - [ ] Hybrid GBS
+- [ ] Multi-loop
+  - [x] Bézier
+  - [x] Clamped B-spline
+  - [ ] Periodic B-spline
 - [x] Support filetypes:
   - [x] MGBS
   - [x] NGBS
@@ -95,7 +104,7 @@ libcdgbs/
   - [ ] Polygonal
   - [ ] Regular
 - [ ] mu types
-  - [ ] Corner
+  - [x] Corner
   - [ ] Degree elevated
   - [ ] Middle-1
 
