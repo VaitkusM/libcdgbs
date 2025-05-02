@@ -70,6 +70,8 @@ libcdgbs/
 ├── src/               # Source files
 ├── tests/             # Test executables
 ├── external/          # Submodules: Triangle, Eigen, OpenMesh, libgeom
+├── examples/          # Test example files
+├── docs/              # Documentation
 ├── CMakeLists.txt     # Main build config
 └── README.md
 ```
