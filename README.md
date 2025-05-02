@@ -78,7 +78,7 @@ libcdgbs/
 
 ## 📝 To-Do
 
-- Patch types:
+- [ ] Patch types:
   - [x] Generalized Bézier (GB)
   - [x] Generalized B-spline (GBS)
   - [ ] Displacement GBS
