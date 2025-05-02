@@ -85,7 +85,7 @@ libcdgbs/
   - [x] CGB
   - [x] GBS
   - [x] MLP
-  - [ ] GBP
+  - [x] GBP
 - [ ] Interior control point
 - [ ] Ribbon control points
 - [ ] MAT-based interior control

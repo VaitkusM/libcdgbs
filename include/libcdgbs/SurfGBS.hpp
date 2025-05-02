@@ -51,6 +51,7 @@ namespace libcdgbs {
     bool readMLP(const std::string& filename, double target_length = 3.0);
     bool readCGB(const std::string& filename, double target_length = 3.0);
     bool readGBS(const std::string& filename, double target_length = 3.0);
+    bool readGBP(const std::string& filename, double target_length = 3.0);
 
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
 

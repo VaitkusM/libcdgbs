@@ -1,0 +1,7 @@
+.gbp (Generalized Bézier) formátum:
+
+<# of sides : int> <degree: int>
+<central control point : double x 3>
+<CP_000 : double x 3>
+...
+<CP_NML : double x 3>
