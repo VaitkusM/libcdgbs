@@ -136,15 +136,10 @@ void SurfGBS::init_data()
       cps.push_back({ 0.0, 0.0, 0.0 });
       cps.push_back({ 0.5, 0.5, 0.5 });
       cps.push_back({ 1.0, 1.0, 1.0 });
-
-      if(side == 0) { 
-        cps[4] = { 0.0, 0.0, 0.0 };
-      }
       
       deform_splines[loop].push_back(Geometry::BSSurface(deg_u, deg_v, knots, knots, cps));
       side_deformed[loop].push_back(false);
     }
-    side_deformed[loop][0] = true; //first side is always deformed
   }
 }
 
@@ -475,8 +470,8 @@ void SurfGBS::merge_smooth_corners() {
       rib1.eval(1, 0, 1, duv1);
       rib2.eval(0, 0, 1, duv2);
       const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
-      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
-        << angle << std::endl;
+      // std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+        // << angle << std::endl;
       if (angle < 1e-3) {
         // Create new ribbon
         const size_t deg_u1 = rib1.basisU().degree();
@@ -487,7 +482,7 @@ void SurfGBS::merge_smooth_corners() {
           continue;
         }
         else {
-          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+          // std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
         }
         size_t num_segments = num_merged_sides.back() + 1;
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
@@ -528,19 +523,19 @@ void SurfGBS::merge_smooth_corners() {
       rib1.eval(1, 0, 1, duv1);
       rib2.eval(0, 0, 1, duv2);
       const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
-      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
-        << angle << std::endl;
+      // std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+      //   << angle << std::endl;
       if (angle < 1e-3) {
         // Create new ribbon
         const size_t deg_u1 = rib1.basisU().degree();
         const size_t deg_u2 = rib2.basisU().degree();
         const size_t deg_v = rib1.basisV().degree();
         if (deg_u1 != deg_u2) {
-          std::cerr << "Error: Cannot merge ribbons with different degrees!" << std::endl;
+          // std::cerr << "Error: Cannot merge ribbons with different degrees!" << std::endl;
           continue;
         }
         else {
-          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+          // std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
         }
         size_t num_segments = num_merged_sides.back() + num_merged_sides.front();
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors

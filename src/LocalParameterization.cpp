@@ -296,23 +296,57 @@ bool SurfGBS::compute_deformed_parameters()
 {
   auto& mesh = meshDomain;
 
-  h_coords_deformed.clear();
-  h_coords_deformed.resize(meshDomain.n_vertices());
-  for (const auto v : meshDomain.vertices()) {
-    auto& h = h_coords_deformed[v.idx()];
-    h.resize(num_loops);
-    for (size_t loop = 0; loop < num_loops; ++loop) {
-      h[loop].resize(num_sides[loop]);
+  // Detecting sides to deform based on turning angles (integrated curvature)
+  for (size_t li = 0; li < num_loops; ++li) {
+    for (size_t si = 0; si < num_sides[li]; ++si) {
+      // const auto & cc = domain_boundary_curves[li][si];
+      // auto t0 = (cc[1] - cc[0]).normalized();
+      // auto t1 = (cc[cc.size() - 1] - cc[cc.size() - 2]).normalized();
+      // double angle = std::acos(std::min(std::max(t0.dot(t1), -1.0), 1.0));
+      // std::cout << "Turning angle for side " << si << " of loop " << li << " is " << angle * 180.0 / M_PI << " degrees." << std::endl;
+      // if (angle > M_PI / 4) {
+      //   side_deformed[li][si] = true;
+      //   deform_splines[li][si].controlPoint(1,1) = { 0.0, 0.0, 0.0 }; //pull down the middle control point to create a "valley"
+      //   std::cout << "Deforming side " << si << " of loop " << li << " with turning angle " << angle * 180.0 / M_PI << " degrees." << std::endl;
+      // } else {
+      //   side_deformed[li][si] = false;
+      // }
+
+      // For now, just deform ribbons with more than deg + 1 control points in u direction
+      if (ribbons[li][si].numControlPoints()[0] > ribbons[li][si].basisU().degree() + 1) {
+        side_deformed[li][si] = true;
+        deform_splines[li][si].controlPoint(1,1) = { 0.0, 0.0, 0.0 }; //pull down the middle coefficient
+        //std::cout << "Deforming side " << si << " of loop " << li << std::endl;
+      } 
+      else {
+        side_deformed[li][si] = false;
+      }
+
     }
   }
+
+  h_coords_deformed = h_coords;
+
+  // h_coords_deformed.clear();
+  // h_coords_deformed.resize(meshDomain.n_vertices());
+  // for (const auto v : meshDomain.vertices()) {
+  //   auto& h = h_coords_deformed[v.idx()];
+  //   h.resize(num_loops);
+  //   for (size_t loop = 0; loop < num_loops; ++loop) {
+  //     h[loop].resize(num_sides[loop]);
+  //   }
+  // }
+
 
   for (auto v : mesh.vertices()) {
     for (size_t li = 0; li < num_loops; ++li) {
       for (size_t si = 0; si < num_sides[li]; ++si) {
-        const double s = s_coords[v.idx()][li][si];
-        const double h = h_coords[v.idx()][li][si];
-        const double h_def = deform_splines[li][si].eval(s, h)[0]; // Example deformation: scale h by 0.5
-        h_coords_deformed[v.idx()][li][si] = h_def;
+        if (side_deformed[li][si]) {
+          const double s = s_coords[v.idx()][li][si];
+          const double h = h_coords[v.idx()][li][si];
+          const double h_def = deform_splines[li][si].eval(s, h)[0]; // Example deformation: scale h by 0.5
+          h_coords_deformed[v.idx()][li][si] = h_def;
+        }
       }
     }
   }
