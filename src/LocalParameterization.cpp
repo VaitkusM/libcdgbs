@@ -291,3 +291,31 @@ bool SurfGBS::compute_harmonic_parameters()
 
   return true;
 }
+
+bool SurfGBS::compute_deformed_parameters()
+{
+  auto& mesh = meshDomain;
+
+  h_coords_deformed.clear();
+  h_coords_deformed.resize(meshDomain.n_vertices());
+  for (const auto v : meshDomain.vertices()) {
+    auto& h = h_coords_deformed[v.idx()];
+    h.resize(num_loops);
+    for (size_t loop = 0; loop < num_loops; ++loop) {
+      h[loop].resize(num_sides[loop]);
+    }
+  }
+
+  for (auto v : mesh.vertices()) {
+    for (size_t li = 0; li < num_loops; ++li) {
+      for (size_t si = 0; si < num_sides[li]; ++si) {
+        const double s = s_coords[v.idx()][li][si];
+        const double h = h_coords[v.idx()][li][si];
+        const double h_def = deform_splines[li][si].eval(s, h)[0]; // Example deformation: scale h by 0.5
+        h_coords_deformed[v.idx()][li][si] = h_def;
+      }
+    }
+  }
+
+  return true;
+}

@@ -27,7 +27,7 @@ namespace libcdgbs {
   void Example::say_hello(const std::string& filename, double target_length) {
     gbs = SurfGBS();
     gbs.debug_outputs = true;
-    gbs.readMLP(filename + ".mlp", target_length);
+    gbs.readMGBS(filename + ".mgbs", target_length, true);
     gbs.compute_domain_boundary();
     gbs.compute_domain_mesh();
     gbs.writeOBJ(gbs.meshDomain, filename + ".obj");

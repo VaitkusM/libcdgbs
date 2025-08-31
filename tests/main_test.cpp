@@ -1,7 +1,7 @@
 #include "libcdgbs/Example.hpp"
 
 int main(int argc, char* argv[]) {
-    std::string filename = "threeloops";
+    std::string filename = "Concave";
     double target_length = 3.0;
     // Check if the user provided a filename as a command-line argument
     if (argc >= 2) {

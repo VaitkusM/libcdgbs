@@ -8,7 +8,7 @@
 
 using namespace libcdgbs;
 
-bool SurfGBS::readMGBS(const std::string& filename, double target_length)
+bool SurfGBS::readMGBS(const std::string& filename, double target_length, bool merge_smooth_corners)
 {
   std::ifstream in(filename);
   if (!in) {
@@ -85,7 +85,7 @@ bool SurfGBS::readMGBS(const std::string& filename, double target_length)
     return false;
   }
 
-  load_ribbons(ribbons, target_length);
+  load_ribbons(ribbons, target_length, merge_smooth_corners);
 
   return true;
 }

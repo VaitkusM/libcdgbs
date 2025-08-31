@@ -38,21 +38,27 @@ namespace libcdgbs {
 
     std::vector<std::vector<std::vector<double> > > s_coords;
     std::vector<std::vector<std::vector<double> > > h_coords;
+    std::vector<std::vector<std::vector<double> > > h_coords_deformed;
     std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > > blend_functions;
+
+    std::vector<std::vector<Ribbon> > deform_splines;
+    std::vector<std::vector<bool > > side_deformed;
 
     bool debug_outputs = false;
 
     SurfGBS();
 
-    void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length = 3.0);
-    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh);
+    void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length = 3.0, bool merge_smooth_corners = true);
+    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners = true);
 
-    bool readMGBS(const std::string& filename, double target_length = 3.0);
-    bool readMLP(const std::string& filename, double target_length = 3.0);
-    bool readCGB(const std::string& filename, double target_length = 3.0);
-    bool readGBS(const std::string& filename, double target_length = 3.0);
-    bool readGBP(const std::string& filename, double target_length = 3.0);
-    bool readNGBS(const std::string& filename, double target_length = 3.0);
+    void init_data();
+
+    bool readMGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
+    bool readMLP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
+    bool readCGB(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
+    bool readGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
+    bool readGBP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
+    bool readNGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
 
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
 
@@ -63,12 +69,15 @@ namespace libcdgbs {
     bool evaluate_mesh(Mesh& mesh, bool reset = true);
 
     bool compute_harmonic_parameters();
+    bool compute_deformed_parameters();
 
     void projectCurves2Domain(
       const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz, 
       std::vector<std::vector<Eigen::Vector3d>>& curves_uv
     ) const;
     Eigen::Vector3d project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandle ff) const;
+
+    void merge_smooth_corners();
 
     size_t prev(size_t loop, size_t side) const;
     size_t next(size_t loop, size_t side) const;

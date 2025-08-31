@@ -31,43 +31,17 @@ SurfGBS::SurfGBS()
 
 }
 
-void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length)
+void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, bool merge_corners)
 {
   ribbons = ribbon_surfs;
 
-  num_loops = ribbons.size();
-  num_sides.resize(num_loops);
-  num_rows.resize(num_loops);
-  num_cols.resize(num_loops);
-  side_res.resize(num_loops);
-  deg_h.resize(num_loops);
-  for (size_t loop = 0; loop < num_loops; ++loop) {
-    const size_t ns = ribbons[loop].size();
-    num_sides[loop] = ns;
-    deg_h[loop].resize(ns, 3);
-    num_rows[loop].resize(ns);
-    num_cols[loop].resize(ns);
-    side_res[loop].resize(ns);
-    for (size_t side = 0; side < ns; ++side) {
-      //NUmber of B-spline control points in U and V directions
-      num_rows[loop][side] = ribbons[loop][side].basisV().knots().size() - ribbons[loop][side].basisV().degree() - 1;
-      num_cols[loop][side] = ribbons[loop][side].basisU().knots().size() - ribbons[loop][side].basisU().degree() - 1;
-      side_res[loop][side] = 100; // default resolution
-    }
-  }
-
-  // Set number of samples based on target edge length
-  for (size_t loop = 0; loop < num_loops; ++loop) {
-    for (size_t side = 0; side < num_sides[loop]; ++side) {
-      auto rib = ribbons[loop][side];
-      auto curve_length = getLength(rib);
-
-      auto num_samples = std::max(1.0, curve_length / target_length);
-      side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
-    }
-  }
+  init_data();
 
   SurfGBS::target_length = target_length;
+
+  if (merge_corners) {
+    merge_smooth_corners();
+  }
 }
 
 [[maybe_unused]]
@@ -89,15 +63,89 @@ static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > 
     }
 }
 
-void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh)
+void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners)
 {
-  load_ribbons(ribbon_surfs, target_length);
+  load_ribbons(ribbon_surfs, target_length, merge_smooth_corners);
   compute_domain_boundary();
   // writeLoops(domain_boundary_curves, "/tmp/boundary.obj");
   compute_domain_mesh();
   compute_local_parameters();
   compute_blend_functions();
   evaluate_mesh(mesh);
+}
+
+
+void SurfGBS::init_data()
+{
+  num_sides.clear();
+  num_rows.clear();
+  num_cols.clear();
+  side_res.clear();
+  deg_h.clear();
+  deform_splines.clear();
+  side_deformed.clear();
+
+  num_loops = ribbons.size();
+  num_sides.resize(num_loops);
+  num_rows.resize(num_loops);
+  num_cols.resize(num_loops);
+  side_res.resize(num_loops);
+  deg_h.resize(num_loops);
+  deform_splines.resize(num_loops);
+  side_deformed.resize(num_loops);
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    const size_t ns = ribbons[loop].size();
+    num_sides[loop] = ns;
+    deg_h[loop].resize(ns, 3);
+    num_rows[loop].resize(ns);
+    num_cols[loop].resize(ns);
+    side_res[loop].resize(ns);
+    for (size_t side = 0; side < ns; ++side) {
+      //Nmber of B-spline control points in U and V directions
+      num_rows[loop][side] = ribbons[loop][side].basisV().knots().size() - ribbons[loop][side].basisV().degree() - 1;
+      num_cols[loop][side] = ribbons[loop][side].basisU().knots().size() - ribbons[loop][side].basisU().degree() - 1;
+      side_res[loop][side] = 100; // default resolution
+    }
+  }
+
+  // Set number of samples based on target edge length
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    for (size_t side = 0; side < num_sides[loop]; ++side) {
+      auto rib = ribbons[loop][side];
+      auto curve_length = getLength(rib);
+
+      auto num_samples = std::max(1.0, curve_length / target_length);
+      side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
+    }
+  }
+
+  // Initialize deformation splines (bi-quadratic B-splines with 3x3 control points)
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    for (size_t side = 0; side < num_sides[loop]; ++side) {
+      const size_t deg_u = 2;
+      const size_t deg_v = 2;
+      const Geometry::DoubleVector knots {0.0, 0.0, 0.0, 1.0, 1.0, 1.0};
+
+      Geometry::VectorVector cps;
+      cps.push_back({ 0.0, 0.0, 0.0 });
+      cps.push_back({ 0.5, 0.5, 0.5 });
+      cps.push_back({ 1.0, 1.0, 1.0 });
+      cps.push_back({ 0.0, 0.0, 0.0 });
+      cps.push_back({ 0.5, 0.5, 0.5 });
+      cps.push_back({ 1.0, 1.0, 1.0 });
+      cps.push_back({ 0.0, 0.0, 0.0 });
+      cps.push_back({ 0.5, 0.5, 0.5 });
+      cps.push_back({ 1.0, 1.0, 1.0 });
+
+      if(side == 0) { 
+        cps[4] = { 0.0, 0.0, 0.0 };
+      }
+      
+      deform_splines[loop].push_back(Geometry::BSSurface(deg_u, deg_v, knots, knots, cps));
+      side_deformed[loop].push_back(false);
+    }
+    side_deformed[loop][0] = true; //first side is always deformed
+  }
 }
 
 bool SurfGBS::compute_domain_boundary()
@@ -242,6 +290,10 @@ bool SurfGBS::compute_local_parameters()
     std::cout << "Error computing harmonic parameters" << std::endl;
     return false;
   }
+  if(!compute_deformed_parameters()) {
+    std::cout << "Error computing deformed parameters" << std::endl;
+    return false;
+  }
 
   return true;
 }
@@ -264,8 +316,10 @@ bool SurfGBS::compute_blend_functions()
         const auto deg_s = ribbons[loop][side].basisU().degree();
         const auto deg_h = SurfGBS::deg_h[loop][side];
 
+        const auto &hs = side_deformed[loop][side] ? h_coords_deformed : h_coords;
+
         const auto s = std::min(std::max(s_coords[v.idx()][loop][side], 0.0), 1.0);
-        const auto h = std::min(std::max(h_coords[v.idx()][loop][side], 0.0), 1.0);
+        const auto h = std::min(std::max(hs[v.idx()][loop][side], 0.0), 1.0);
 
         const auto& Bu = ribbons[loop][side].basisU();
         const auto& Bv = Geometry::BSBasis(deg_h, [deg_h]() {
@@ -403,6 +457,120 @@ Eigen::Vector3d SurfGBS::project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandl
 
   auto pt_uv = u * p1_uv + v * p2_uv + w * p3_uv;
   return { pt_uv[0], pt_uv[1], 0.0 };
+}
+
+void SurfGBS::merge_smooth_corners() {
+  auto new_ribbons = ribbons;
+  for(size_t loop = 0; loop < 1; ++loop) { // Skip inner loops
+    new_ribbons[loop].clear();
+    new_ribbons[loop].push_back(ribbons[loop].front());
+    std::vector<size_t> num_merged_sides(1, 1);
+    for(size_t side = 1; side < num_sides[loop]; ++side) {
+      const auto side_m1 = prev(loop, side);
+      // const auto side_p1 = next(loop, side);
+      const auto rib1 = new_ribbons[loop].back();
+      const auto rib2 = ribbons[loop][side];
+      // Check angle between sides
+      Geometry::VectorMatrix duv1, duv2;
+      rib1.eval(1, 0, 1, duv1);
+      rib2.eval(0, 0, 1, duv2);
+      const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
+      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+        << angle << std::endl;
+      if (angle < 1e-3) {
+        // Create new ribbon
+        const size_t deg_u1 = rib1.basisU().degree();
+        const size_t deg_u2 = rib2.basisU().degree();
+        const size_t deg_v = rib1.basisV().degree();
+        if(deg_u1 != deg_u2) {
+          std::cerr << "Error: Cannot merge ribbons with different degrees!" << std::endl;
+          continue;
+        }
+        else {
+          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+        }
+        size_t num_segments = num_merged_sides.back() + 1;
+        Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
+        knots_u.insert(knots_u.end(), deg_u1 + 1, 0.0);
+        for (size_t i = 1; i < num_segments; ++i) {
+          knots_u.insert(knots_u.end(), deg_u1, i / double(num_segments));
+        }
+        knots_u.insert(knots_u.end(), deg_u1 + 1, 1.0);
+        knots_v = rib1.basisV().knots();
+        Geometry::PointVector cpts;
+        for(size_t c = 0; c < rib1.numControlPoints().at(0); ++c) {
+          for(size_t r = 0; r < rib1.numControlPoints().at(1); ++r) {
+            cpts.push_back(rib1.controlPoint(c, r));
+          }
+        }
+        for (size_t c = 1; c < rib2.numControlPoints().at(0); ++c) {
+          for (size_t r = 0; r < rib2.numControlPoints().at(1); ++r) {
+            cpts.push_back(rib2.controlPoint(c, r));
+          }
+        }
+        Geometry::BSSurface new_rib(deg_u1, deg_v, knots_u, knots_v, cpts);
+        new_ribbons[loop].back() = new_rib;
+        ++num_merged_sides.back();
+      }
+      else {
+        new_ribbons[loop].push_back(ribbons[loop][side]);
+        num_merged_sides.push_back(1);
+      }
+    }
+
+    {// Merge last and first ribbons if needed
+      size_t side = 0;
+      const auto side_m1 = prev(loop, side);
+      const auto rib1 = new_ribbons[loop].back();
+      const auto rib2 = new_ribbons[loop].front();
+      // Check angle between sides
+      Geometry::VectorMatrix duv1, duv2;
+      rib1.eval(1, 0, 1, duv1);
+      rib2.eval(0, 0, 1, duv2);
+      const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
+      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+        << angle << std::endl;
+      if (angle < 1e-3) {
+        // Create new ribbon
+        const size_t deg_u1 = rib1.basisU().degree();
+        const size_t deg_u2 = rib2.basisU().degree();
+        const size_t deg_v = rib1.basisV().degree();
+        if (deg_u1 != deg_u2) {
+          std::cerr << "Error: Cannot merge ribbons with different degrees!" << std::endl;
+          continue;
+        }
+        else {
+          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+        }
+        size_t num_segments = num_merged_sides.back() + num_merged_sides.front();
+        Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
+        knots_u.insert(knots_u.end(), deg_u1 + 1, 0.0);
+        for (size_t i = 1; i < num_segments; ++i) {
+          knots_u.insert(knots_u.end(), deg_u1, i / double(num_segments));
+        }
+        knots_u.insert(knots_u.end(), deg_u1 + 1, 1.0);
+        knots_v = rib1.basisV().knots();
+        Geometry::PointVector cpts;
+        for (size_t c = 0; c < rib1.numControlPoints().at(0); ++c) {
+          for (size_t r = 0; r < rib1.numControlPoints().at(1); ++r) {
+            cpts.push_back(rib1.controlPoint(c, r));
+          }
+        }
+        for (size_t c = 1; c < rib2.numControlPoints().at(0); ++c) {
+          for (size_t r = 0; r < rib2.numControlPoints().at(1); ++r) {
+            cpts.push_back(rib2.controlPoint(c, r));
+          }
+        }
+        Geometry::BSSurface new_rib(deg_u1, deg_v, knots_u, knots_v, cpts);
+        new_ribbons[loop].front() = new_rib;
+        new_ribbons[loop].pop_back();
+        num_merged_sides.front() += num_merged_sides.back();
+        num_merged_sides.pop_back();
+      }
+    }
+  }
+  ribbons = new_ribbons;
+  init_data();
 }
 
 inline size_t circular_index(size_t i, int offset, size_t n) {
