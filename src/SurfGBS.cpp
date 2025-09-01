@@ -385,9 +385,13 @@ double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, 
   const auto side_m1 = prev(loop, side);
   const auto side_p1 = next(loop, side);
 
-  const auto h = h_coords[vtx.idx()][loop][side];
-  const auto hm1 = h_coords[vtx.idx()][loop][side_m1];
-  const auto hp1 = h_coords[vtx.idx()][loop][side_p1];
+  const auto& hs = side_deformed[loop][side] ? h_coords_deformed : h_coords;
+  const auto& hs_m1 = side_deformed[loop][side_m1] ? h_coords_deformed : h_coords;
+  const auto& hs_p1 = side_deformed[loop][side] ? h_coords_deformed : h_coords;
+
+  const auto h = hs[vtx.idx()][loop][side];
+  const auto hm1 = hs_m1[vtx.idx()][loop][side_m1];
+  const auto hp1 = hs_p1[vtx.idx()][loop][side_p1];
 
   const auto p = num_rows[loop][side];
   const auto alpha = pow(hm1, p) / (pow(hm1, p) + pow(h, p));
@@ -470,8 +474,8 @@ void SurfGBS::merge_smooth_corners() {
       rib1.eval(1, 0, 1, duv1);
       rib2.eval(0, 0, 1, duv2);
       const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
-      // std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
-        // << angle << std::endl;
+      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+        << angle << std::endl;
       if (angle < 1e-3) {
         // Create new ribbon
         const size_t deg_u1 = rib1.basisU().degree();
@@ -482,7 +486,7 @@ void SurfGBS::merge_smooth_corners() {
           continue;
         }
         else {
-          // std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
         }
         size_t num_segments = num_merged_sides.back() + 1;
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
@@ -523,8 +527,8 @@ void SurfGBS::merge_smooth_corners() {
       rib1.eval(1, 0, 1, duv1);
       rib2.eval(0, 0, 1, duv2);
       const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
-      // std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
-      //   << angle << std::endl;
+      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+        << angle << std::endl;
       if (angle < 1e-3) {
         // Create new ribbon
         const size_t deg_u1 = rib1.basisU().degree();
@@ -535,7 +539,7 @@ void SurfGBS::merge_smooth_corners() {
           continue;
         }
         else {
-          // std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
         }
         size_t num_segments = num_merged_sides.back() + num_merged_sides.front();
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors

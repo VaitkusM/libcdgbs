@@ -316,7 +316,7 @@ bool SurfGBS::compute_deformed_parameters()
       if (ribbons[li][si].numControlPoints()[0] > ribbons[li][si].basisU().degree() + 1) {
         side_deformed[li][si] = true;
         deform_splines[li][si].controlPoint(1,1) = { 0.0, 0.0, 0.0 }; //pull down the middle coefficient
-        //std::cout << "Deforming side " << si << " of loop " << li << std::endl;
+        std::cout << "Deforming side " << si << " of loop " << li << std::endl;
       } 
       else {
         side_deformed[li][si] = false;
@@ -344,7 +344,7 @@ bool SurfGBS::compute_deformed_parameters()
         if (side_deformed[li][si]) {
           const double s = s_coords[v.idx()][li][si];
           const double h = h_coords[v.idx()][li][si];
-          const double h_def = deform_splines[li][si].eval(s, h)[0]; // Example deformation: scale h by 0.5
+          const double h_def = deform_splines[li][si].eval(s, h)[0];
           h_coords_deformed[v.idx()][li][si] = h_def;
         }
       }
