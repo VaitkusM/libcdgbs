@@ -13,11 +13,11 @@ using Curve3D = std::vector<SubCurve3D>;
 using Curves3D = std::vector<Curve3D>;
 
 //calculate arclength of each ribbon boundary B-spline curve
-double getLength(const Geometry::BSSurface& rib) {
+double getLength(const Geometry::BSSurface& rib, double u_start = 0.0, double u_end = 1.0) {
   double length = 0.0;
   for (size_t i = 0; i < 200; ++i) {
-    double ua = double(i) / 200.0;
-    double ub = double(i + 1) / 200.0;
+    double ua = (1.0 - (double(i) / 200.0)) * u_start + (double(i) / 200.0) * u_end;
+    double ub = (1.0 - (double(i + 1) / 200.0)) * u_start + (double(i + 1) / 200.0) * u_end;;
     auto pa = rib.eval(ua, 0.0);
     auto pb = rib.eval(ub, 0.0);
     length += (pb - pa).norm();
@@ -112,11 +112,28 @@ void SurfGBS::init_data()
   for (size_t loop = 0; loop < num_loops; ++loop) {
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       auto rib = ribbons[loop][side];
-      auto curve_length = getLength(rib);
+      if(rib.numControlPoints()[0] <= rib.basisU().degree() + 1) {
+        auto curve_length = getLength(rib);
 
-      auto num_samples = std::max(1.0, curve_length / target_length);
-      side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
-      //side_res[loop][side] = 200; //forcing 200 for now
+        auto num_samples = std::max(1.0, curve_length / target_length);
+        side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
+        //side_res[loop][side] = 200; //forcing 200 for now
+      }
+      else {
+        size_t num_segments = rib.numControlPoints()[0] - rib.basisU().degree();
+        side_res[loop][side] = 0;
+        for(size_t seg = 0; seg < num_segments - 1; ++seg) {
+          double u_start = double(seg) / (num_segments - 1);
+          double u_end = double(seg + 1) / (num_segments - 1);
+          auto curve_length = getLength(rib, u_start, u_end);
+
+          auto num_samples = std::max(1.0, curve_length / target_length);
+          side_res[loop][side] += std::max(static_cast<size_t>(num_samples), size_t(5));
+          if(seg > 0) {
+            side_res[loop][side] -= 1; //remove duplicate point at segment boundary
+          }
+        }
+      }
     }
   }
 
