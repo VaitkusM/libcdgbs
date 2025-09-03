@@ -182,6 +182,7 @@ Curve3D LoopFlattener::normalizeLoopAngles(
     );
     for (size_t ii = 0; ii < geodesic_curvatures.size(); ++ii) {
       interior_angles_for_side[ii] = unsignAngle(M_PI - geodesic_curvatures[ii]);
+      // std::cout << "Interior angle (" << side << "," << ii << "):"  << interior_angles_for_side[ii] << std::endl;
     }
     angle_sum += std::accumulate(
       interior_angles_for_side.begin(),
@@ -196,15 +197,18 @@ Curve3D LoopFlattener::normalizeLoopAngles(
     );
 
     auto corner_angle = GeomUtil::getAngle(
-      curv_p1[1] - curv_p1[0],
-      curv[curv.size() - 2] - curv[curv.size() - 1],
-      normals[side_p1][0],
+      projectToPlane(curv_p1[1] - curv_p1[0], normals[side].back()).normalized(),
+      projectToPlane(curv[curv.size() - 2] - curv[curv.size() - 1], normals[side].back()).normalized(),
+      normals[side].back(),
       false,
       false
     );
     interior_angles.push_back(corner_angle);
+    // std::cout << "Corner angle: " << corner_angle << std::endl;
     angle_sum += corner_angle;
   }
+
+  // std::cout << "Angle sum: " << angle_sum << std::endl;
 
   // Normalizing angles
   normalized_interior_angles = interior_angles;

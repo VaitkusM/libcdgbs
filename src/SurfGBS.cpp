@@ -116,6 +116,7 @@ void SurfGBS::init_data()
 
       auto num_samples = std::max(1.0, curve_length / target_length);
       side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
+      //side_res[loop][side] = 200; //forcing 200 for now
     }
   }
 
@@ -189,6 +190,9 @@ bool SurfGBS::compute_domain_boundary()
     }
     avg_n /= num_pts;
     bool flip = loop > 0 && (va.dot(avg_n)) < 0;
+    if(flip) {
+      std::cout << "Flipping loop " << loop << " with vector area " << va.transpose() << " and average normal " << avg_n.transpose() << std::endl;
+    }
 
     developed_boundary_curves[loop] =
       LoopFlattener::developLoop(points[loop], normals[loop], flip);
@@ -246,6 +250,7 @@ bool SurfGBS::compute_domain_boundary()
   if (debug_outputs) {
     writeLoops(domain_boundary_curves, "boundary_uv_1.obj");
     writeLoops(developed_boundary_curves, "boundary_developed.obj");
+    writeLoops(developed_boundary_curves_normalized, "boundary_normalized.obj");
     writeLoops(points, "boundary_xyz.obj");
   }
 
@@ -474,8 +479,8 @@ void SurfGBS::merge_smooth_corners() {
       rib1.eval(1, 0, 1, duv1);
       rib2.eval(0, 0, 1, duv2);
       const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
-      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
-        << angle << std::endl;
+      // std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+      //  << angle << std::endl;
       if (angle < 1e-3) {
         // Create new ribbon
         const size_t deg_u1 = rib1.basisU().degree();
@@ -527,8 +532,8 @@ void SurfGBS::merge_smooth_corners() {
       rib1.eval(1, 0, 1, duv1);
       rib2.eval(0, 0, 1, duv2);
       const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
-      std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
-        << angle << std::endl;
+      //std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+      //  << angle << std::endl;
       if (angle < 1e-3) {
         // Create new ribbon
         const size_t deg_u1 = rib1.basisU().degree();
