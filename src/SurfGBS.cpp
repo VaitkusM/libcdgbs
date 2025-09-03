@@ -35,9 +35,9 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
 {
   ribbons = ribbon_surfs;
 
-  init_data();
-
   SurfGBS::target_length = target_length;
+
+  init_data();
 
   if (merge_corners) {
     merge_smooth_corners();
