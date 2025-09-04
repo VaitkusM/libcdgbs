@@ -18,6 +18,7 @@ namespace libcdgbs {
     } domain_type;
 
     std::vector<std::vector<Ribbon> > ribbons;
+    std::vector<std::vector<size_t> > num_segments;
 
     Mesh meshDomain;
     Mesh meshSurface;

@@ -37,6 +37,11 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
 
   SurfGBS::target_length = target_length;
 
+  num_segments.clear();
+  num_segments.resize(ribbons.size());
+  for (size_t loop = 0; loop < ribbons.size(); ++loop) {
+    num_segments[loop].resize(ribbons[loop].size(), 1);
+  }
   init_data();
 
   if (merge_corners) {
@@ -112,8 +117,7 @@ void SurfGBS::init_data()
   for (size_t loop = 0; loop < num_loops; ++loop) {
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       auto rib = ribbons[loop][side];
-      size_t num_segments = rib.basisU().knots().size() - (2*rib.basisU().degree() - 1);
-      if(num_segments == 1) {
+      if(num_segments[loop][side] == 1) {
         auto curve_length = getLength(rib);
 
         auto num_samples = std::max(1.0, curve_length / target_length);
@@ -122,9 +126,9 @@ void SurfGBS::init_data()
       }
       else {
         side_res[loop][side] = 0;
-        for(size_t seg = 0; seg < num_segments; ++seg) {
-          double u_start = double(seg) / (num_segments);
-          double u_end = double(seg + 1) / (num_segments);
+        for(size_t seg = 0; seg < num_segments[loop][side]; ++seg) {
+          double u_start = double(seg) / (num_segments[loop][side]);
+          double u_end = double(seg + 1) / (num_segments[loop][side]);
           auto curve_length = getLength(rib, u_start, u_end);
 
           auto num_samples = std::max(1.0, curve_length / target_length);
@@ -159,6 +163,8 @@ void SurfGBS::init_data()
       side_deformed[loop].push_back(false);
     }
   }
+
+
 }
 
 bool SurfGBS::compute_domain_boundary()
@@ -589,6 +595,7 @@ void SurfGBS::merge_smooth_corners() {
         num_merged_sides.pop_back();
       }
     }
+    num_segments[loop] = num_merged_sides;
   }
   ribbons = new_ribbons;
   init_data();
