@@ -31,11 +31,12 @@ SurfGBS::SurfGBS()
 
 }
 
-void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, bool merge_corners)
+void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, bool merge_corners, double deform_value)
 {
   ribbons = ribbon_surfs;
 
   SurfGBS::target_length = target_length;
+  SurfGBS::deform_value = deform_value;
 
   num_segments.clear();
   num_segments.resize(ribbons.size());
@@ -68,9 +69,9 @@ static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > 
     }
 }
 
-void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners)
+void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners, double deform_value)
 {
-  load_ribbons(ribbon_surfs, target_length, merge_smooth_corners);
+  load_ribbons(ribbon_surfs, target_length, merge_smooth_corners, deform_value);
   compute_domain_boundary();
   // writeLoops(domain_boundary_curves, "/tmp/boundary.obj");
   compute_domain_mesh();

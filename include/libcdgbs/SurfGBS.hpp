@@ -47,22 +47,23 @@ namespace libcdgbs {
 
     std::vector<std::vector<Ribbon> > deform_splines;
     std::vector<std::vector<bool > > side_deformed;
+    double deform_value = 0.0;
 
     bool debug_outputs = false;
 
     SurfGBS();
 
-    void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length = 3.0, bool merge_smooth_corners = true);
-    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners = true);
+    void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
+    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners = true, double deform_value = 0.0);
 
     void init_data();
 
-    bool readMGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
-    bool readMLP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
-    bool readCGB(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
-    bool readGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
-    bool readGBP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
-    bool readNGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true);
+    bool readMGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
+    bool readMLP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
+    bool readCGB(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
+    bool readGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
+    bool readGBP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
+    bool readNGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
 
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
 
