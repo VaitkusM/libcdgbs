@@ -122,9 +122,9 @@ void SurfGBS::init_data()
       }
       else {
         side_res[loop][side] = 0;
-        for(size_t seg = 0; seg < num_segments - 1; ++seg) {
-          double u_start = double(seg) / (num_segments - 1);
-          double u_end = double(seg + 1) / (num_segments - 1);
+        for(size_t seg = 0; seg < num_segments; ++seg) {
+          double u_start = double(seg) / (num_segments);
+          double u_end = double(seg + 1) / (num_segments);
           auto curve_length = getLength(rib, u_start, u_end);
 
           auto num_samples = std::max(1.0, curve_length / target_length);
