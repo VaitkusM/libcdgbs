@@ -112,7 +112,8 @@ void SurfGBS::init_data()
   for (size_t loop = 0; loop < num_loops; ++loop) {
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       auto rib = ribbons[loop][side];
-      if(rib.numControlPoints()[0] <= rib.basisU().degree() + 1) {
+      size_t num_segments = rib.basisU().knots().size() - (2*rib.basisU().degree() - 1);
+      if(num_segments == 1) {
         auto curve_length = getLength(rib);
 
         auto num_samples = std::max(1.0, curve_length / target_length);
@@ -120,7 +121,6 @@ void SurfGBS::init_data()
         //side_res[loop][side] = 200; //forcing 200 for now
       }
       else {
-        size_t num_segments = rib.numControlPoints()[0] - rib.basisU().degree();
         side_res[loop][side] = 0;
         for(size_t seg = 0; seg < num_segments - 1; ++seg) {
           double u_start = double(seg) / (num_segments - 1);
