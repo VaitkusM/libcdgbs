@@ -38,6 +38,17 @@ namespace MatrixUtil {
     bool                 last_included  = true
   );
 
+    void addConstraint2RHS(
+    const Mesh&                mesh,
+    const VertexHandles&       fixed_vertices,
+    const std::vector<double>& values,
+    DenseMatrix&               rhs,
+    size_t                     col_idx        = 0,
+    bool                       reversed       = false,
+    bool                       preallocated   = false,
+    bool                       last_included  = true
+  );
+
   
 
   void buildMatrixKKTSystem(

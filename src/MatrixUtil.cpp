@@ -149,6 +149,31 @@ void MatrixUtil::addConstraint2RHS(
   }
 }
 
+void MatrixUtil::addConstraint2RHS(
+  const Mesh& mesh,
+  const VertexHandles& fixed_vertices,
+  const std::vector<double>& values,
+  DenseMatrix& rhs,
+  size_t               col_idx,
+  bool                 reversed,
+  bool                 preallocated,
+  bool                 last_included
+)
+{
+  size_t num_cons = fixed_vertices.size();
+  size_t num_rows_old = rhs.rows();
+  size_t num_cols_old = rhs.cols();
+  if (!preallocated || num_rows_old < num_cons) {
+    rhs.conservativeResize(num_rows_old + num_cons, std::max(num_cols_old, (size_t)1));
+  }
+
+  for (size_t ii = 0; ii < num_cons; ++ii) {
+    double value = reversed ? (1.0 - values[ii]) : values[ii];
+    size_t cons_idx = preallocated ? fixed_vertices[ii].idx() : (num_rows_old + ii);
+    rhs(cons_idx, col_idx) = value;
+  }
+}
+
 void MatrixUtil::buildMatrixKKTSystem(
   const SparseMatrix& AA,
   const SparseMatrix& CC,

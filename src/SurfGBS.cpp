@@ -86,6 +86,7 @@ void SurfGBS::init_data()
   num_rows.clear();
   num_cols.clear();
   side_res.clear();
+  side_segment_res.clear();
   deg_h.clear();
   deform_splines.clear();
   side_deformed.clear();
@@ -95,6 +96,7 @@ void SurfGBS::init_data()
   num_rows.resize(num_loops);
   num_cols.resize(num_loops);
   side_res.resize(num_loops);
+  side_segment_res.resize(num_loops);
   deg_h.resize(num_loops);
   deform_splines.resize(num_loops);
   side_deformed.resize(num_loops);
@@ -105,11 +107,13 @@ void SurfGBS::init_data()
     num_rows[loop].resize(ns);
     num_cols[loop].resize(ns);
     side_res[loop].resize(ns);
+    side_segment_res[loop].resize(ns);
     for (size_t side = 0; side < ns; ++side) {
       //Nmber of B-spline control points in U and V directions
       num_rows[loop][side] = ribbons[loop][side].basisV().knots().size() - ribbons[loop][side].basisV().degree() - 1;
       num_cols[loop][side] = ribbons[loop][side].basisU().knots().size() - ribbons[loop][side].basisU().degree() - 1;
       side_res[loop][side] = 100; // default resolution
+      side_segment_res[loop][side].resize(num_segments[loop][side], 100); // default resolution per segment
     }
   }
 
@@ -123,6 +127,7 @@ void SurfGBS::init_data()
         auto num_samples = std::max(1.0, curve_length / target_length);
         side_res[loop][side] = std::max(static_cast<size_t>(num_samples), size_t(5));
         //side_res[loop][side] = 200; //forcing 200 for now
+        side_segment_res[loop][side][0] = side_res[loop][side];
       }
       else {
         side_res[loop][side] = 0;
@@ -132,7 +137,9 @@ void SurfGBS::init_data()
           auto curve_length = getLength(rib, u_start, u_end);
 
           auto num_samples = std::max(1.0, curve_length / target_length);
-          side_res[loop][side] += std::max(static_cast<size_t>(num_samples), size_t(5));
+          const size_t seg_res = std::max(static_cast<size_t>(num_samples), size_t(5));
+          side_res[loop][side] += seg_res;
+          side_segment_res[loop][side][seg]= seg_res;
           if(seg > 0) {
             side_res[loop][side] -= 1; //remove duplicate point at segment boundary
           }
@@ -175,29 +182,56 @@ bool SurfGBS::compute_domain_boundary()
   developed_boundary_curves.resize(num_loops);
   developed_boundary_curves_normalized.resize(num_loops);
   domain_boundary_curves.resize(num_loops);
+  domain_boundary_params.clear();
+  domain_boundary_params.resize(num_loops);
 
   Curves3D points(num_loops);
   Curves3D normals(num_loops);
   for (size_t loop = 0; loop < num_loops; ++loop) {
     points[loop].resize(num_sides[loop]);
     normals[loop].resize(num_sides[loop]);
+    domain_boundary_params[loop].resize(num_sides[loop]);
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       const auto& rib = ribbons[loop][side];
       const size_t res = side_res[loop][side];
-      points[loop][side].resize(res);
-      normals[loop][side].resize(res);
-      for (size_t i = 0; i < res; ++i) {
-        const double u = double(i) / (res - 1);
+      points[loop][side].reserve(res);
+      normals[loop][side].reserve(res);
+      domain_boundary_params[loop][side].reserve(res);
+      if (num_segments[loop][side] > 1) {
+        for (size_t i = 0; i < num_segments[loop][side]; ++i) {
+          const double u_start = double(i) / (num_segments[loop][side]);
+          const double u_end = double(i + 1) / (num_segments[loop][side]);
+          const size_t seg_res = side_segment_res[loop][side][i];
+          for(size_t j = 0; j < seg_res; ++j) {
+            if(i > 0 && j == 0) {
+              continue; //skip duplicate point at segment boundary
+            }
+            double u = (1.0 - (double(j) / (seg_res - 1))) * u_start + (double(j) / (seg_res - 1)) * u_end;
+            Geometry::VectorMatrix duv;
+            auto pt = rib.eval(u, 0.0, 1, duv);
 
-        Geometry::VectorMatrix duv;
-        auto pt = rib.eval(u, 0.0, 1, duv);
+            points[loop][side].push_back({ pt[0], pt[1], pt[2] });
+            auto du = duv[1][0];
+            auto dv = duv[0][1];
+            auto nn = (du ^ dv).normalized();
+            normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
+            domain_boundary_params[loop][side].push_back(u);
+          }
+        }
+      }
+      else {
+        for (size_t i = 0; i < res; ++i) {
+          double u = double(i) / (res - 1);
+          Geometry::VectorMatrix duv;
+          auto pt = rib.eval(u, 0.0, 1, duv);
 
-
-        points[loop][side][i] = { pt[0], pt[1], pt[2] };
-        auto du = duv[1][0];
-        auto dv = duv[0][1];
-        auto nn = (du ^ dv).normalized();
-        normals[loop][side][i] = { nn[0], nn[1], nn[2] };
+          points[loop][side].push_back({ pt[0], pt[1], pt[2] });
+          auto du = duv[1][0];
+          auto dv = duv[0][1];
+          auto nn = (du ^ dv).normalized();
+          normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
+          domain_boundary_params[loop][side].push_back(u);
+        }
       }
     }
 

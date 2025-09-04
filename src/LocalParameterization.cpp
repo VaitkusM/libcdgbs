@@ -118,12 +118,10 @@ bool SurfGBS::compute_harmonic_parameters()
         addConstraint2RHS(
           mesh,
           side_pts_m1,
+          domain_boundary_params[loop][side_m1],
           dh,
           idx,
           true,
-          0.0,
-          1.0,
-          0.0,
           true,
           true
         );
@@ -131,15 +129,52 @@ bool SurfGBS::compute_harmonic_parameters()
         addConstraint2RHS(
           mesh,
           side_pts_p1,
+          domain_boundary_params[loop][side_p1],
           dh,
           idx,
-          true,
-          0.0,
-          0.0,
-          1.0,
+          false,
           true,
           true
         );
+
+        // addConstraint2RHS(
+        //   mesh,
+        //   side_pts,
+        //   dh,
+        //   idx,
+        //   false,
+        //   0.0,
+        //   0.0,
+        //   0.0,
+        //   true,
+        //   true
+        // );
+
+        // addConstraint2RHS(
+        //   mesh,
+        //   side_pts_m1,
+        //   dh,
+        //   idx,
+        //   true,
+        //   0.0,
+        //   1.0,
+        //   0.0,
+        //   true,
+        //   true
+        // );
+
+        // addConstraint2RHS(
+        //   mesh,
+        //   side_pts_p1,
+        //   dh,
+        //   idx,
+        //   true,
+        //   0.0,
+        //   0.0,
+        //   1.0,
+        //   true,
+        //   true
+        // );
 
         ++idx;
       }
@@ -238,12 +273,10 @@ bool SurfGBS::compute_harmonic_parameters()
       addConstraint2RHS(
         mesh,
         side_pts,
+        domain_boundary_params[loop][side],
         dd,
         0,
-        true,
-        0.0,
-        0.0,
-        1.0,
+        false,
         false,
         false
       );
@@ -260,6 +293,45 @@ bool SurfGBS::compute_harmonic_parameters()
         false,
         true
       );
+
+      // addConstraint2RHS(
+      //   mesh,
+      //   side_pts_m1,
+      //   dd,
+      //   0,
+      //   false,
+      //   0.0,
+      //   0.0,
+      //   0.0,
+      //   false,
+      //   false
+      // );
+
+      // addConstraint2RHS(
+      //   mesh,
+      //   side_pts,
+      //   dd,
+      //   0,
+      //   true,
+      //   0.0,
+      //   0.0,
+      //   1.0,
+      //   false,
+      //   false
+      // );
+
+      // addConstraint2RHS(
+      //   mesh,
+      //   side_pts_p1,
+      //   dd,
+      //   0,
+      //   false,
+      //   1.0,
+      //   0.0,
+      //   1.0,
+      //   false,
+      //   true
+      // );
 
       // //printing elements of dd
       // for (int k = 0; k < dd.rows(); ++k) {

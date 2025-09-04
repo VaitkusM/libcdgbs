@@ -27,6 +27,8 @@ namespace libcdgbs {
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > developed_boundary_curves_normalized;
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > domain_boundary_curves;
     std::vector<std::vector<std::vector<VertexHandle> > > domain_boundary_vertices;
+    std::vector<std::vector<std::vector<double> > > domain_boundary_params;
+
 
     size_t num_loops;
     std::vector<size_t> num_sides;
@@ -36,6 +38,7 @@ namespace libcdgbs {
 
     double target_length = 3.0;
     std::vector<std::vector<size_t> > side_res;
+    std::vector<std::vector<std::vector<size_t> > > side_segment_res; // indices of corners to be merged
 
     std::vector<std::vector<std::vector<double> > > s_coords;
     std::vector<std::vector<std::vector<double> > > h_coords;
