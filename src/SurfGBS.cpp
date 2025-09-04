@@ -449,7 +449,7 @@ double SurfGBS::get_mu(const Mesh::VertexHandle& vtx, size_t loop, size_t side, 
 
   const auto& hs = side_deformed[loop][side] ? h_coords_deformed : h_coords;
   const auto& hs_m1 = side_deformed[loop][side_m1] ? h_coords_deformed : h_coords;
-  const auto& hs_p1 = side_deformed[loop][side] ? h_coords_deformed : h_coords;
+  const auto& hs_p1 = side_deformed[loop][side_p1] ? h_coords_deformed : h_coords;
 
   const auto h = hs[vtx.idx()][loop][side];
   const auto hm1 = hs_m1[vtx.idx()][loop][side_m1];
