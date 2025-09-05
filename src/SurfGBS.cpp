@@ -31,12 +31,14 @@ SurfGBS::SurfGBS()
 
 }
 
-void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, bool merge_corners, double deform_value)
+void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, bool merge_corners, double deform_value, bool restrict_params, bool c1_merge)
 {
   ribbons = ribbon_surfs;
 
   SurfGBS::target_length = target_length;
   SurfGBS::deform_value = deform_value;
+  SurfGBS::restrict_params = restrict_params;
+  SurfGBS::c1_merge = c1_merge;
 
   num_segments.clear();
   num_segments.resize(ribbons.size());
@@ -69,9 +71,9 @@ static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > 
     }
 }
 
-void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners, double deform_value)
+void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge)
 {
-  load_ribbons(ribbon_surfs, target_length, merge_smooth_corners, deform_value);
+  load_ribbons(ribbon_surfs, target_length, merge_smooth_corners, deform_value, restrict_params, c1_merge);
   compute_domain_boundary();
   // writeLoops(domain_boundary_curves, "/tmp/boundary.obj");
   compute_domain_mesh();
@@ -555,12 +557,12 @@ void SurfGBS::merge_smooth_corners() {
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
         knots_u.insert(knots_u.end(), deg_u1 + 1, 0.0);
         for (size_t i = 1; i < num_segments; ++i) {
-          knots_u.insert(knots_u.end(), deg_u1, i / double(num_segments));
+          knots_u.insert(knots_u.end(), deg_u1 - (c1_merge ? 1 : 0), i / double(num_segments));
         }
         knots_u.insert(knots_u.end(), deg_u1 + 1, 1.0);
         knots_v = rib1.basisV().knots();
         Geometry::PointVector cpts;
-        for(size_t c = 0; c < rib1.numControlPoints().at(0); ++c) {
+        for(size_t c = 0; c < rib1.numControlPoints().at(0) - (c1_merge ? 1 : 0); ++c) {
           for(size_t r = 0; r < rib1.numControlPoints().at(1); ++r) {
             cpts.push_back(rib1.controlPoint(c, r));
           }
@@ -608,12 +610,12 @@ void SurfGBS::merge_smooth_corners() {
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
         knots_u.insert(knots_u.end(), deg_u1 + 1, 0.0);
         for (size_t i = 1; i < num_segments; ++i) {
-          knots_u.insert(knots_u.end(), deg_u1, i / double(num_segments));
+          knots_u.insert(knots_u.end(), deg_u1 - (c1_merge ? 1 : 0), i / double(num_segments));
         }
         knots_u.insert(knots_u.end(), deg_u1 + 1, 1.0);
         knots_v = rib1.basisV().knots();
         Geometry::PointVector cpts;
-        for (size_t c = 0; c < rib1.numControlPoints().at(0); ++c) {
+        for (size_t c = 0; c < rib1.numControlPoints().at(0) - (c1_merge ? 1 : 0); ++c) {
           for (size_t r = 0; r < rib1.numControlPoints().at(1); ++r) {
             cpts.push_back(rib1.controlPoint(c, r));
           }
