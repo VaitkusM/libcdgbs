@@ -45,6 +45,8 @@ namespace libcdgbs {
     std::vector<std::vector<std::vector<double> > > h_coords_deformed;
     std::vector<std::vector<std::vector<std::vector<std::vector<double> > > > > blend_functions;
 
+    bool restrict_params = true;
+
     std::vector<std::vector<Ribbon> > deform_splines;
     std::vector<std::vector<bool > > side_deformed;
     double deform_value = 0.0;

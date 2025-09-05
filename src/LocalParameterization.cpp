@@ -61,7 +61,7 @@ bool SurfGBS::compute_harmonic_parameters()
   const size_t num_sides_all = std::accumulate(num_sides.begin(), num_sides.end(), 0);
 
   const bool three_sided = (num_loops == 1) && (num_sides_all == 3);
-
+  std::cout << "Computing h-coordinates..." << std::endl;
   { // Compute h-coordinates
     std::vector<VertexHandle> sides_pts;
     for (size_t li = 0; li < num_loops; ++li) {
@@ -95,11 +95,27 @@ bool SurfGBS::compute_harmonic_parameters()
         }
         for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size(); ++i) {
           auto vtx = domain_boundary_vertices[loop][side_m1][i];
-          side_pts_m1.push_back(vtx);
+          size_t nseg = num_segments[loop][side_m1];
+          if(nseg == 1 || !restrict_params) {
+            side_pts_m1.push_back(vtx);
+          }
+          else {
+            if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1)/nseg) {
+              side_pts_m1.push_back(vtx);
+            }
+          }
         }
         for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
           auto vtx = domain_boundary_vertices[loop][side_p1][i];
-          side_pts_p1.push_back(vtx);
+          size_t nseg = num_segments[loop][side_p1];
+          if (nseg == 1 || !restrict_params) {
+            side_pts_p1.push_back(vtx);
+          }
+          else{
+            if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {
+              side_pts_p1.push_back(vtx);
+            }
+          }
         }
 
         addConstraint2RHS(
@@ -115,27 +131,56 @@ bool SurfGBS::compute_harmonic_parameters()
           true
         );
 
-        addConstraint2RHS(
-          mesh,
-          side_pts_m1,
-          domain_boundary_params[loop][side_m1],
-          dh,
-          idx,
-          true,
-          true,
-          true
-        );
+        if(restrict_params) {
+          addConstraint2RHS(
+            mesh,
+            side_pts_m1,
+            dh,
+            idx,
+            true,
+            0.0,
+            1.0,
+            0.0,
+            true,
+            true
+          );
+  
+          addConstraint2RHS(
+            mesh,
+            side_pts_p1,
+            dh,
+            idx,
+            true,
+            0.0,
+            0.0,
+            1.0,
+            true,
+            true
+          );
+        }
+        else {
+          addConstraint2RHS(
+            mesh,
+            side_pts_m1,
+            domain_boundary_params[loop][side_m1],
+            dh,
+            idx,
+            true,
+            true,
+            true
+          );
 
-        addConstraint2RHS(
-          mesh,
-          side_pts_p1,
-          domain_boundary_params[loop][side_p1],
-          dh,
-          idx,
-          false,
-          true,
-          true
-        );
+          addConstraint2RHS(
+            mesh,
+            side_pts_p1,
+            domain_boundary_params[loop][side_p1],
+            dh,
+            idx,
+            false,
+            true,
+            true
+          );
+        }
 
         // addConstraint2RHS(
         //   mesh,
@@ -204,6 +249,7 @@ bool SurfGBS::compute_harmonic_parameters()
   }
 
   //Compute s-coordinates
+  std::cout << "Computing s-coordinates..." << std::endl;
   for (size_t loop = 0; loop < num_loops; ++loop) {
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       // std::cout << "Computing s-coordinates for loop " << loop << " side " << side << std::endl;
@@ -216,13 +262,29 @@ bool SurfGBS::compute_harmonic_parameters()
         auto vtx = domain_boundary_vertices[loop][side][i];
         side_pts.push_back(vtx);
       }
-      for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size() - 1; ++i) {
+      for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size()- 1; ++i) {
         auto vtx = domain_boundary_vertices[loop][side_m1][i];
-        side_pts_m1.push_back(vtx);
+        size_t nseg = num_segments[loop][side_m1];
+        if (nseg == 1 || !restrict_params) {
+          side_pts_m1.push_back(vtx);
+        }
+        else {
+          if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1) / nseg) {
+            side_pts_m1.push_back(vtx);
+          }
+        }
       }
       for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
         auto vtx = domain_boundary_vertices[loop][side_p1][i];
-        side_pts_p1.push_back(vtx);
+        size_t nseg = num_segments[loop][side_p1];
+        if (nseg == 1 || !restrict_params) {
+          side_pts_p1.push_back(vtx);
+        }
+        else {
+          if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {
+            side_pts_p1.push_back(vtx);
+          }
+        }
       }
 
       std::vector<VertexHandle> sides_pts;
