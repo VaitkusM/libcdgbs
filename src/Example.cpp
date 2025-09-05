@@ -55,7 +55,7 @@ namespace libcdgbs {
     gbs.compute_blend_functions();
     gbs.evaluate_mesh(gbs.meshSurface, true);
     gbs.writeOBJ(gbs.meshSurface, filename + "_surf.obj");
-
+    gbs.writeMGBS(filename + "_out.mgbs");
 
     // std::cout << "Hello from libcdgbs!" << std::endl;
   }

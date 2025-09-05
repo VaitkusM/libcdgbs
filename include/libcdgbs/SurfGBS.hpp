@@ -66,6 +66,7 @@ namespace libcdgbs {
     bool readNGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0);
 
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
+    bool writeMGBS(const std::string& filename) const;
 
     bool compute_domain_boundary();
     bool compute_domain_mesh();
