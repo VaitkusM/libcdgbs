@@ -536,9 +536,9 @@ void SurfGBS::merge_smooth_corners() {
       const auto rib2 = ribbons[loop][side];
       // Check angle between sides
       Geometry::VectorMatrix duv1, duv2;
-      rib1.eval(1, 0, 1, duv1);
-      rib2.eval(0, 0, 1, duv2);
-      const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
+      rib1.eval(1.0, 0.0, 1.0, duv1);
+      rib2.eval(0.0, 0.0, 1.0, duv2);
+      const double angle = std::acos(std::clamp(duv1[1][0].normalized() * duv2[1][0].normalized(), -1.0, 1.0)) * 180.0 / M_PI;
       // std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
       //  << angle << std::endl;
       if (angle < 1e-3) {
@@ -589,10 +589,10 @@ void SurfGBS::merge_smooth_corners() {
       const auto rib2 = new_ribbons[loop].front();
       // Check angle between sides
       Geometry::VectorMatrix duv1, duv2;
-      rib1.eval(1, 0, 1, duv1);
-      rib2.eval(0, 0, 1, duv2);
-      const double angle = std::acos((duv1[1][0].normalized() * duv2[1][0].normalized())) * 180.0 / M_PI;
-      //std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
+      rib1.eval(1.0, 0.0, 1.0, duv1);
+      rib2.eval(0.0, 0.0, 1.0, duv2);
+      const double angle = std::acos(std::clamp(duv1[1][0].normalized() * duv2[1][0].normalized(), -1.0, 1.0)) * 180.0 / M_PI;
+      // std::cout << "Loop " << loop << " sides " << side_m1 << " and " << side << " angle: "
       //  << angle << std::endl;
       if (angle < 1e-3) {
         // Create new ribbon
@@ -600,7 +600,7 @@ void SurfGBS::merge_smooth_corners() {
         const size_t deg_u2 = rib2.basisU().degree();
         const size_t deg_v = rib1.basisV().degree();
         if (deg_u1 != deg_u2) {
-          // std::cerr << "Error: Cannot merge ribbons with different degrees!" << std::endl;
+          std::cerr << "Error: Cannot merge ribbons with different degrees!" << std::endl;
           continue;
         }
         else {
