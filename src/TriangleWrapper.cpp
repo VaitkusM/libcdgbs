@@ -136,43 +136,45 @@ namespace libcdgbs {
     mesh.request_vertex_status();
     mesh.request_edge_status();
     mesh.request_halfedge_status();
-    // Detect and split boundary triangles
-    std::vector<Mesh::FaceHandle> faces_to_split;
-    for (auto f : mesh.faces()) {
-      bool all_boundary = true;
-      std::vector<Mesh::VertexHandle> face_vertices;
-      for (auto v : mesh.fv_range(f)) {
-        face_vertices.push_back(v);
-        if (!mesh.is_boundary(v)) {
-          all_boundary = false;
-          break;
+
+    if(false){// Detect and split boundary triangles
+      std::vector<Mesh::FaceHandle> faces_to_split;
+      for (auto f : mesh.faces()) {
+        bool all_boundary = true;
+        std::vector<Mesh::VertexHandle> face_vertices;
+        for (auto v : mesh.fv_range(f)) {
+          face_vertices.push_back(v);
+          if (!mesh.is_boundary(v)) {
+            all_boundary = false;
+            break;
+          }
+        }
+        if (all_boundary) {
+          faces_to_split.push_back(f);
         }
       }
-      if (all_boundary) {
-        faces_to_split.push_back(f);
-      }
-    }
 
-    for (auto f : faces_to_split) {
-      std::vector<Mesh::VertexHandle> face_vertices;
-      for (auto v : mesh.fv_range(f)) {
-        face_vertices.push_back(v);
-      }
+      for (auto f : faces_to_split) {
+        std::vector<Mesh::VertexHandle> face_vertices;
+        for (auto v : mesh.fv_range(f)) {
+          face_vertices.push_back(v);
+        }
 
-      // Compute centroid
-      Mesh::Point centroid(0.0f, 0.0f, 0.0f);
-      for (auto v : face_vertices) {
-        centroid += mesh.point(v);
-      }
-      centroid /= 3.0f;
+        // Compute centroid
+        Mesh::Point centroid(0.0f, 0.0f, 0.0f);
+        for (auto v : face_vertices) {
+          centroid += mesh.point(v);
+        }
+        centroid /= 3.0f;
 
-      // Add centroid as a new vertex
-      auto centroid_vh = mesh.add_vertex(centroid);
+        // Add centroid as a new vertex
+        auto centroid_vh = mesh.add_vertex(centroid);
 
-      // Replace the original face with three new faces
-      mesh.delete_face(f, false);
-      for (size_t i = 0; i < 3; ++i) {
-        mesh.add_face(face_vertices[i], face_vertices[(i + 1) % 3], centroid_vh);
+        // Replace the original face with three new faces
+        mesh.delete_face(f, false);
+        for (size_t i = 0; i < 3; ++i) {
+          mesh.add_face(face_vertices[i], face_vertices[(i + 1) % 3], centroid_vh);
+        }
       }
     }
     mesh.garbage_collection();
