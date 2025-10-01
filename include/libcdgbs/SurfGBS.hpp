@@ -85,6 +85,8 @@ namespace libcdgbs {
     ) const;
     Eigen::Vector3d project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandle ff) const;
 
+    void scale_perimeter_ribbons(std::vector<std::vector<Ribbon> >& perimeter_ribbons) const;
+
     void merge_smooth_corners();
     bool c1_merge = false;
 

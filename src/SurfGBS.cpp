@@ -280,8 +280,11 @@ bool SurfGBS::compute_domain_boundary()
   if (num_loops > 1) { // Handling inner loops
     //Computing perimeter surface
     std::vector<std::vector<Ribbon> > perimeter_ribbons(1, ribbons.front());
+    scale_perimeter_ribbons(perimeter_ribbons);
     SurfGBS perimeter_gbs;
     perimeter_gbs.load_ribbons(perimeter_ribbons, target_length);
+    perimeter_gbs.num_segments[0] = num_segments[0];
+    perimeter_gbs.side_segment_res[0] = side_segment_res[0];
     perimeter_gbs.compute_domain_boundary();
     perimeter_gbs.compute_domain_mesh();
     perimeter_gbs.compute_local_parameters();
@@ -521,6 +524,23 @@ Eigen::Vector3d SurfGBS::project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandl
 
   auto pt_uv = u * p1_uv + v * p2_uv + w * p3_uv;
   return { pt_uv[0], pt_uv[1], 0.0 };
+}
+
+void SurfGBS::scale_perimeter_ribbons(std::vector<std::vector<Ribbon> >& perimeter_ribbons) const
+{
+  const double scale = 1.0;
+  for (size_t loop = 0; loop < perimeter_ribbons.size(); ++loop) {
+    for (size_t side = 0; side < perimeter_ribbons[loop].size(); ++side) {
+      auto& rib = perimeter_ribbons[loop][side];
+      size_t nc = rib.numControlPoints()[0];
+      for (size_t col = 0; col < nc; ++col){
+        auto cp0 = rib.controlPoint(col, 0);
+        auto cp1 = rib.controlPoint(col, 1);
+        auto d = cp1 - cp0;
+        rib.controlPoint(col, 1) = cp0 + d*scale;
+      }
+    }
+  }
 }
 
 void SurfGBS::merge_smooth_corners() {
