@@ -739,9 +739,9 @@ double SurfGBS::calc_inner_loop_scale(size_t loop) const
       ); // Constructing a cubic Hermite
 
       const double al = spline.arcLength(0.0, 1.0);
-      std::cout << "Loop " << loop << " side " << side << " point " << i 
-        << " closest to loop " << min_l << " side " << min_s << " point " << min_p 
-        << " distance: " << min_d << " arc length: " << al << " ratio: " << min_d / al << std::endl;
+      // std::cout << "Loop " << loop << " side " << side << " point " << i 
+      //   << " closest to loop " << min_l << " side " << min_s << " point " << min_p 
+      //   << " distance: " << min_d << " arc length: " << al << " ratio: " << min_d / al << std::endl;
       skv.push_back(min_d / al);
       //sk = std::min(min_d / al, sk);
       sk += min_d / al;
