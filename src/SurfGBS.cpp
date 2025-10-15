@@ -245,7 +245,10 @@ bool SurfGBS::compute_domain_boundary()
           auto du = duv[1][0];
           auto dv = duv[0][1];
           auto nn = (du ^ dv).normalized();
+          auto tt = du.normalized();
+          boundary_tangents[loop][side].push_back({ tt[0], tt[1], tt[2] });
           boundary_normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
+          boundary_crossderivatives[loop][side].push_back({ dv[0], dv[1], dv[2] });
           domain_boundary_params[loop][side].push_back(u);
         }
       }
@@ -687,7 +690,7 @@ double SurfGBS::calc_inner_loop_scale(size_t loop) const
 {
   size_t total_points = 0; 
   double sk = 1.0;
-  std::vector<double> skv;
+  //std::vector<double> skv;
   for(size_t side = 0; side < ribbons[loop].size(); ++side) {
     const auto &rib = ribbons[loop][side];
     const auto &points = boundary_points[loop][side];
@@ -712,10 +715,10 @@ double SurfGBS::calc_inner_loop_scale(size_t loop) const
           }
           for(size_t pi = 0; pi < boundary_points[l][s].size(); ++pi) {
             const auto pt = boundary_points[l][s][pi];
-            const auto n = boundary_normals[l][s][i];
-            const auto dv = (cp0 - pt);
+            const auto ni = boundary_normals[l][s][pi];
+            const auto dv = (pt- cp0);
             const auto di = dv.norm();
-            if(di < min_d && dv.normalized().dot(n) > 0) {
+            if(di < min_d /*&& dv.normalized().dot(n) > 0 */) {
               min_d = di;
               min_l = l;
               min_s = s;
@@ -739,17 +742,23 @@ double SurfGBS::calc_inner_loop_scale(size_t loop) const
       ); // Constructing a cubic Hermite
 
       const double al = spline.arcLength(0.0, 1.0);
-      // std::cout << "Loop " << loop << " side " << side << " point " << i 
-      //   << " closest to loop " << min_l << " side " << min_s << " point " << min_p 
-      //   << " distance: " << min_d << " arc length: " << al << " ratio: " << min_d / al << std::endl;
-      skv.push_back(min_d / al);
+      //std::cout << "Loop " << loop << " side " << side << " point " << i 
+      //  << " closest to loop " << min_l << " side " << min_s << " point " << min_p 
+      //  << " distance: " << min_d << " arc length: " << al << " ratio: " << min_d / al << std::endl;
+      // SubCurve3D spline_pts;
+      // for(size_t ii = 0; ii < 100; ++ii) {
+      //   auto pp = spline.eval(double(ii) / 99.0);
+      //   spline_pts.push_back({pp[0], pp[1], pp[2]});
+      // }
+      //writeLoops( { {spline_pts} } , "closest_" + std::to_string(loop) + "_" + std::to_string(side) + "_" + std::to_string(i) + ".obj");
+        //skv.push_back(min_d / al);
       //sk = std::min(min_d / al, sk);
       sk += min_d / al;
       ++total_points;
     }
   }
   sk /= total_points;
-  std::sort(skv.begin(), skv.end());
+  //std::sort(skv.begin(), skv.end());
   return sk;
   //return skv[skv.size()/2] ; // returning median
 }
