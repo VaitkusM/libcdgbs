@@ -23,6 +23,11 @@ namespace libcdgbs {
     Mesh meshDomain;
     Mesh meshSurface;
 
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_points;
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_normals;
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_tangents;
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_crossderivatives;
+
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > developed_boundary_curves;
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > developed_boundary_curves_normalized;
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > domain_boundary_curves;
@@ -85,7 +90,20 @@ namespace libcdgbs {
     ) const;
     Eigen::Vector3d project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandle ff) const;
 
+    static void findPCAPlane(
+      const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz,
+      Eigen::Vector3d& origin, 
+      Eigen::Vector3d& normal, 
+      Eigen::Vector3d& axis_u, 
+      Eigen::Vector3d& axis_v 
+    );
+    static void projectCurves2LSPlane(
+      const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz,
+      std::vector<std::vector<Eigen::Vector3d>>& curves_uv
+    );
     void scale_perimeter_ribbons(std::vector<std::vector<Ribbon> >& perimeter_ribbons) const;
+    static double calc_inner_loop_scale(const std::vector<std::vector<Eigen::Vector3d>>& loop, const std::vector<std::vector<Eigen::Vector3d>>& normals, const std::vector<std::vector<Eigen::Vector3d>>& tangents);
+    double calc_inner_loop_scale(size_t loop) const;
 
     void merge_smooth_corners();
     bool c1_merge = false;

@@ -188,17 +188,27 @@ bool SurfGBS::compute_domain_boundary()
   domain_boundary_params.clear();
   domain_boundary_params.resize(num_loops);
 
-  Curves3D points(num_loops);
-  Curves3D normals(num_loops);
+  boundary_points.clear();
+  boundary_normals.clear();
+  boundary_tangents.clear();
+  boundary_crossderivatives.clear();
+  boundary_points.resize(num_loops);
+  boundary_normals.resize(num_loops);
+  boundary_tangents.resize(num_loops);
+  boundary_crossderivatives.resize(num_loops);
   for (size_t loop = 0; loop < num_loops; ++loop) {
-    points[loop].resize(num_sides[loop]);
-    normals[loop].resize(num_sides[loop]);
+    boundary_points[loop].resize(num_sides[loop]);
+    boundary_normals[loop].resize(num_sides[loop]);
+    boundary_tangents[loop].resize(num_sides[loop]);
+    boundary_crossderivatives[loop].resize(num_sides[loop]);
     domain_boundary_params[loop].resize(num_sides[loop]);
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       const auto& rib = ribbons[loop][side];
       const size_t res = side_res[loop][side];
-      points[loop][side].reserve(res);
-      normals[loop][side].reserve(res);
+      boundary_points[loop][side].reserve(res);
+      boundary_normals[loop][side].reserve(res);
+      boundary_tangents[loop][side].reserve(res);
+      boundary_crossderivatives[loop][side].reserve(res);
       domain_boundary_params[loop][side].reserve(res);
       if (num_segments[loop][side] > 1) {
         for (size_t i = 0; i < num_segments[loop][side]; ++i) {
@@ -213,11 +223,14 @@ bool SurfGBS::compute_domain_boundary()
             Geometry::VectorMatrix duv;
             auto pt = rib.eval(u, 0.0, 1, duv);
 
-            points[loop][side].push_back({ pt[0], pt[1], pt[2] });
+            boundary_points[loop][side].push_back({ pt[0], pt[1], pt[2] });
             auto du = duv[1][0];
             auto dv = duv[0][1];
             auto nn = (du ^ dv).normalized();
-            normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
+            auto tt = du.normalized();
+            boundary_tangents[loop][side].push_back({ tt[0], tt[1], tt[2] });
+            boundary_normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
+            boundary_crossderivatives[loop][side].push_back({ dv[0], dv[1], dv[2] });
             domain_boundary_params[loop][side].push_back(u);
           }
         }
@@ -228,23 +241,23 @@ bool SurfGBS::compute_domain_boundary()
           Geometry::VectorMatrix duv;
           auto pt = rib.eval(u, 0.0, 1, duv);
 
-          points[loop][side].push_back({ pt[0], pt[1], pt[2] });
+          boundary_points[loop][side].push_back({ pt[0], pt[1], pt[2] });
           auto du = duv[1][0];
           auto dv = duv[0][1];
           auto nn = (du ^ dv).normalized();
-          normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
+          boundary_normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
           domain_boundary_params[loop][side].push_back(u);
         }
       }
     }
 
     // Flip vector ?
-    auto va = GeomUtil::vectorArea(points[loop]);
+    auto va = GeomUtil::vectorArea(boundary_points[loop]);
     Eigen::Vector3d avg_n(0.0, 0.0, 0.0);
     size_t num_pts = 0;
-    for (size_t side = 0; side < normals[loop].size(); ++side) {
-      for (size_t ii = 0; ii < normals[loop][side].size(); ++ii) {
-        avg_n += normals[loop][side][ii];
+    for (size_t side = 0; side < boundary_normals[loop].size(); ++side) {
+      for (size_t ii = 0; ii < boundary_normals[loop][side].size(); ++ii) {
+        avg_n += boundary_normals[loop][side][ii];
         num_pts++;
       }
     }
@@ -255,13 +268,17 @@ bool SurfGBS::compute_domain_boundary()
     }
 
     developed_boundary_curves[loop] =
-      LoopFlattener::developLoop(points[loop], normals[loop], flip);
+      LoopFlattener::developLoop(boundary_points[loop], boundary_normals[loop], flip);
 
     developed_boundary_curves_normalized[loop] =
-      LoopFlattener::normalizeLoopAngles(points[loop], normals[loop], flip);
+      LoopFlattener::normalizeLoopAngles(boundary_points[loop], boundary_normals[loop], flip);
 
     domain_boundary_curves[loop] =
       LoopFlattener::closeLoop(developed_boundary_curves_normalized[loop]);
+
+    if(loop > 0) {
+      projectCurves2LSPlane(boundary_points[loop], domain_boundary_curves[loop]);
+    }
 
     auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
     GeomUtil::shiftByVector(domain_boundary_curves[loop], -cog);
@@ -271,6 +288,9 @@ bool SurfGBS::compute_domain_boundary()
     auto aligned = domain_boundary_curves[loop];
     GeomUtil::alignCurveLoopPCA(domain_boundary_curves[loop], aligned, false);
     domain_boundary_curves[loop] = aligned;
+
+
+
   }
 
   if (debug_outputs) {
@@ -298,7 +318,7 @@ bool SurfGBS::compute_domain_boundary()
     //Projecting inner loops
     for (size_t loop = 1; loop < num_loops; ++loop) {
       auto curv_proj = domain_boundary_curves[loop];
-      const auto& curv = points[loop];
+      const auto& curv = boundary_points[loop];
       perimeter_gbs.projectCurves2Domain(curv, curv_proj);
       if (debug_outputs) {
         writeLoops({ curv_proj }, std::string("boundary_proj_") + std::to_string(loop) + ".obj");
@@ -306,6 +326,22 @@ bool SurfGBS::compute_domain_boundary()
       auto cog = GeomUtil::centroid(curv_proj);
       GeomUtil::shiftByVector(curv_proj, -cog);
       GeomUtil::alignPointSets(domain_boundary_curves[loop], curv_proj);
+      // Scaling down loop based on distance of centroid from perimeter
+      auto cog_perimeter = GeomUtil::centroid(domain_boundary_curves[0]);
+      auto cog_loop = GeomUtil::centroid(domain_boundary_curves[loop]);
+      double dist_cog = (cog_perimeter - cog_loop).norm();
+      // double scale = 1.0 - calc_inner_loop_scale(domain_boundary_curves[loop], 
+      //   boundary_normals[loop], boundary_tangents[loop]);
+      //scale = 1.0; //std::max(scale, 0.3);
+      double scale = calc_inner_loop_scale(loop);
+      std::cout << "Loop " << loop << " scale factor: " << scale << std::endl;
+      //scale = 1.0; //disable for now
+      // Scaling loop
+      for (auto& sub : domain_boundary_curves[loop]) {
+        for (auto& p : sub) {
+          p *= scale;
+        }
+      }
       GeomUtil::shiftByVector(domain_boundary_curves[loop], cog);
     }
   }
@@ -314,7 +350,7 @@ bool SurfGBS::compute_domain_boundary()
     writeLoops(domain_boundary_curves, "boundary_uv_1.obj");
     writeLoops(developed_boundary_curves, "boundary_developed.obj");
     writeLoops(developed_boundary_curves_normalized, "boundary_normalized.obj");
-    writeLoops(points, "boundary_xyz.obj");
+    writeLoops(boundary_points, "boundary_xyz.obj");
   }
 
   return true;
@@ -497,7 +533,8 @@ void SurfGBS::projectCurves2Domain(
     for (size_t ii = 0; ii < num_pts; ++ii) {
       Eigen::Vector3d pt = curves_xyz[side][ii];
       auto closest_f = meshSurface.findClosestFace({ pt[0], pt[1], pt[2] });
-      curves_uv[side][ii] = project2Triangle_uv(pt, closest_f);
+      auto closest_uv = meshDomain.interpolateInFace(closest_f.face, closest_f.pt_bary);
+      curves_uv[side][ii] = {closest_uv[0], closest_uv[1], 0.0}; // project2Triangle_uv(pt, closest_f);
     }
   }
 }
@@ -526,6 +563,77 @@ Eigen::Vector3d SurfGBS::project2Triangle_uv(Eigen::Vector3d pt, Mesh::FaceHandl
   return { pt_uv[0], pt_uv[1], 0.0 };
 }
 
+void SurfGBS::findPCAPlane(
+  const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz,
+  Eigen::Vector3d& origin,
+  Eigen::Vector3d& normal,
+  Eigen::Vector3d& axis_u,
+  Eigen::Vector3d& axis_v)
+{
+  // Compute centroid
+  origin = Eigen::Vector3d::Zero();
+  size_t total_points = 0;
+  for (const auto& curve : curves_xyz) {
+    for (const auto& pt : curve) {
+      origin += pt;
+      total_points++;
+    }
+  }
+  origin /= total_points;
+
+  // Compute covariance matrix
+  Eigen::Matrix3d cov = Eigen::Matrix3d::Zero();
+  for (const auto& curve : curves_xyz) {
+    for (const auto& pt : curve) {
+      Eigen::Vector3d centered = pt - origin;
+      cov += centered * centered.transpose();
+    }
+  }
+  cov /= total_points;
+
+  // Eigen decomposition
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(cov);
+  if (solver.info() != Eigen::Success) {
+    std::cerr << "Error: Eigen decomposition failed!" << std::endl;
+    return;
+  }
+
+  // The normal is the eigenvector corresponding to the smallest eigenvalue
+  normal = solver.eigenvectors().col(0).normalized();
+  axis_u = solver.eigenvectors().col(2).normalized(); // Largest eigenvalue
+  axis_v = solver.eigenvectors().col(1).normalized(); // Second largest eigenvalue
+
+  // Ensure right-handed coordinate system
+  if ((axis_u.cross(axis_v)).dot(normal) < 0) {
+    axis_v = -axis_v;
+  }
+}
+
+void SurfGBS::projectCurves2LSPlane(
+  const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz,
+  std::vector<std::vector<Eigen::Vector3d>>& curves_uv
+) {
+  
+  curves_uv.clear();
+  curves_uv.resize(curves_xyz.size());
+  Eigen::Vector3d plane_origin, plane_normal, plane_axis_u, plane_axis_v;
+  findPCAPlane(curves_xyz, plane_origin, plane_normal, plane_axis_u, plane_axis_v);
+  std::cout << "PCA Plane origin: " << plane_origin.transpose() << ", normal: " << plane_normal.transpose() << std::endl;
+  for (size_t side = 0; side < curves_xyz.size(); ++side) {
+    size_t num_pts = curves_xyz[side].size();
+    curves_uv[side].resize(num_pts);
+    for (size_t ii = 0; ii < num_pts; ++ii) {
+      Eigen::Vector3d pt = curves_xyz[side][ii];
+      Eigen::Vector3d to_pt = pt - plane_origin;
+      Eigen::Vector3d uv = to_pt - (plane_normal.dot(to_pt)) * plane_normal;
+      double u = uv.dot(plane_axis_u);
+      double v = uv.dot(plane_axis_v);
+      curves_uv[side][ii] = {u, v, 0.0};
+    }
+  }
+}
+
+
 void SurfGBS::scale_perimeter_ribbons(std::vector<std::vector<Ribbon> >& perimeter_ribbons) const
 {
   const double scale = 1.0;
@@ -541,6 +649,109 @@ void SurfGBS::scale_perimeter_ribbons(std::vector<std::vector<Ribbon> >& perimet
       }
     }
   }
+}
+
+double SurfGBS::calc_inner_loop_scale(const std::vector<std::vector<Eigen::Vector3d>>& loop, const std::vector<std::vector<Eigen::Vector3d>>& normals, const std::vector<std::vector<Eigen::Vector3d>>& tangents) 
+{
+  double sk = 0.0;
+  double reff = 0.0;
+  double P = 0.0;
+  size_t total_points = 0;
+  // Computing the scale factor based on normals and tangents
+  Eigen::Vector3d plane_origin, plane_normal, plane_axis_u, plane_axis_v;
+  findPCAPlane(loop, plane_origin, plane_normal, plane_axis_u, plane_axis_v);
+  for(size_t side = 0; side < loop.size(); ++side) {
+    for(size_t i = 0; i < loop[side].size(); ++i) {
+      const auto p = loop[side][i];
+      const auto n = normals[side][i];
+      const auto t = tangents[side][i];
+      sk += std::abs(plane_normal.cross(t).dot(n)) / (1 + std::abs(plane_normal.dot(n)));
+      total_points++;
+    }
+    for(size_t i = 0; i < loop[side].size() - 1; ++i) {
+      const auto p = loop[side][i];
+      const auto p1 = loop[side][i + 1];
+      const auto c = (p + p1) * 0.5;
+      const auto l = (p1 - p).norm();
+      const auto r = (c - plane_origin).norm();
+      reff += r * l;
+      P += l;
+    }
+  }
+  sk /= total_points;
+  reff /= P;
+  return sk / reff;
+}
+
+double SurfGBS::calc_inner_loop_scale(size_t loop) const
+{
+  size_t total_points = 0; 
+  double sk = 1.0;
+  std::vector<double> skv;
+  for(size_t side = 0; side < ribbons[loop].size(); ++side) {
+    const auto &rib = ribbons[loop][side];
+    const auto &points = boundary_points[loop][side];
+    const auto &normals = boundary_normals[loop][side];
+    const auto &tangents = boundary_tangents[loop][side];
+    const auto &crossderivatives = boundary_crossderivatives[loop][side];
+    for(size_t i = 0; i < points.size(); ++i) {
+      const auto p = points[i];
+      const auto n = normals[i];
+      const auto t = tangents[i];
+      const auto cd = crossderivatives[i];
+      const auto cp0 = p;
+      const auto cp1 = (p + cd);
+      size_t min_l = 0;
+      size_t min_s = 0;
+      size_t min_p = 0;
+      double min_d = std::numeric_limits<double>::max();
+      for (size_t l = 0; l < num_loops; ++l) {
+        for (size_t s = 0; s < num_sides[l]; ++s) {
+          if (l == loop) {
+            continue;
+          }
+          for(size_t pi = 0; pi < boundary_points[l][s].size(); ++pi) {
+            const auto pt = boundary_points[l][s][pi];
+            const auto n = boundary_normals[l][s][i];
+            const auto dv = (cp0 - pt);
+            const auto di = dv.norm();
+            if(di < min_d && dv.normalized().dot(n) > 0) {
+              min_d = di;
+              min_l = l;
+              min_s = s;
+              min_p = pi;
+            }
+          }
+        }
+      }
+      const auto cp3 = boundary_points[min_l][min_s][min_p];
+      const auto cdi = boundary_crossderivatives[min_l][min_s][min_p];
+      const auto cp2 = (cp3 + cdi);
+      const Geometry::BSCurve spline(
+        3, 
+        { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, 
+        { 
+          {cp0[0], cp0[1], cp0[2]}, 
+          {cp1[0], cp1[1], cp1[2]}, 
+          {cp2[0], cp2[1], cp2[2]}, 
+          {cp3[0], cp3[1], cp3[2]} 
+        }
+      ); // Constructing a cubic Hermite
+
+      const double al = spline.arcLength(0.0, 1.0);
+      std::cout << "Loop " << loop << " side " << side << " point " << i 
+        << " closest to loop " << min_l << " side " << min_s << " point " << min_p 
+        << " distance: " << min_d << " arc length: " << al << " ratio: " << min_d / al << std::endl;
+      skv.push_back(min_d / al);
+      //sk = std::min(min_d / al, sk);
+      sk += min_d / al;
+      ++total_points;
+    }
+  }
+  sk /= total_points;
+  std::sort(skv.begin(), skv.end());
+  return sk;
+  //return skv[skv.size()/2] ; // returning median
 }
 
 void SurfGBS::merge_smooth_corners() {

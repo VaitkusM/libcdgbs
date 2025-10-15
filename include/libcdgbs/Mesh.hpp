@@ -9,8 +9,17 @@ namespace libcdgbs {
   };
   class Mesh : public OpenMesh::TriMesh_ArrayKernelT<MeshTraits> { 
   public:
-    FaceHandle findClosestFace(Point pt) const;
+    struct ClosestResult {
+      FaceHandle face;
+      Point   pt_xyz;
+      Point   pt_bary;
+      double  dist2    = std::numeric_limits<double>::infinity();
+    };
+    ClosestResult findClosestFace(Point pt) const;
     double dist2Face(Point pt, FaceHandle ff) const;
+
+    Point interpolateInFace(FaceHandle f, Point bary) const;
+    
 
     static void barycentricCoordinates(
       const Point& pt,
