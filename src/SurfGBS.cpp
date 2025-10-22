@@ -783,13 +783,13 @@ double SurfGBS::calc_inner_loop_scale(size_t loop) const
   return std::max(s_min, 0.5) ; // returning median
 }
 
-void SurfGBS::resolve_self_intersections()
+void SurfGBS::resolve_self_intersections(size_t max_iter)
 {
   auto domain_boundary_curves_copy = domain_boundary_curves;
-  bool changed = false;
+  bool self_intersection = false;
   size_t num_iters = 0;
   do {
-    changed = false;
+    self_intersection = false;
     for(size_t loop = 1; loop < num_loops; ++loop) { // Skip inner loops
       auto& pts = domain_boundary_curves[loop];
         
@@ -804,8 +804,8 @@ void SurfGBS::resolve_self_intersections()
           for(size_t other_side = 0; other_side < num_sides[other_loop]; ++other_side) {
             for(size_t side = 0; side < num_sides[loop]; ++side){
               for(size_t i = 0; i < pts[side].size(); ++i) {
-                for(size_t j = 0; j < other_pts.size(); ++j) {
-                  if( (pts[side][i] - other_pts[other_side][j]).norm() < 10.0*target_length ) {
+                for(size_t j = 0; j < other_pts[other_side].size(); ++j) {
+                  if( (pts[side][i] - other_pts[other_side][j]).norm() < 16.0*target_length ) {
                     intersection_idx = static_cast<int>(i);
                     intersection_side = static_cast<int>(side);
                   }
@@ -819,6 +819,10 @@ void SurfGBS::resolve_self_intersections()
       if (intersection_idx == -1) {
         continue;
       }
+      else {
+        std::cout << "Found self-intersection in loop " << loop << " side " << intersection_side << " at index " << intersection_idx << std::endl;
+        self_intersection = true;
+      }
       // Eigen::Vector3d dir = (pts[intersection_side][intersection_idx] - GeomUtil::centroid(domain_boundary_curves[loop])).normalized();
       // // Move pts in the direction of loop cog
       // for (size_t si = 0; si < pts.size(); ++si) {
@@ -826,26 +830,26 @@ void SurfGBS::resolve_self_intersections()
       //     pts[si][pi] += dir * 15.0 * target_length;
       //   }
       // }
-      changed = true;
       // std::cout << "Resolved self-intersection in loop " << loop << " side " << intersection_side << std::endl;
     }
-  } while (changed && ++num_iters < 1);
 
-  if (changed && num_iters >= 1) {
-    //std::cout << "Warning: Could not resolve self-intersections after 10 iterations!" << std::endl;
-    domain_boundary_curves = domain_boundary_curves_copy;
-    // Scaling down inner loops
-    for(size_t loop = 1; loop < num_loops; ++loop) {
-      const double scale = 0.5;
-      std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
-      const auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
-      for (auto& sub : domain_boundary_curves[loop]) {
-        for (auto& p : sub) {
-          p = cog + (p - cog) * scale;
+
+    if (self_intersection) {
+      //std::cout << "Warning: Could not resolve self-intersections after 10 iterations!" << std::endl;
+      domain_boundary_curves = domain_boundary_curves_copy;
+      // Scaling down inner loops
+      for(size_t loop = 1; loop < num_loops; ++loop) {
+        const double scale = 0.7;
+        std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
+        const auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
+        for (auto& sub : domain_boundary_curves[loop]) {
+          for (auto& p : sub) {
+            p = cog + (p - cog) * scale;
+          }
         }
       }
     }
-  }
+  } while (self_intersection && ++num_iters < max_iter);
 }
 
 void SurfGBS::merge_smooth_corners() {
