@@ -8,7 +8,7 @@
 
 using namespace libcdgbs;
 
-bool SurfGBS::readMLP(const std::string& filename, double target_length, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge)
+bool SurfGBS::readMLP(const std::string& filename, double target_length, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge, double global_inner_loop_scale)
 {
   std::ifstream in(filename);
   if (!in) {
@@ -66,7 +66,7 @@ bool SurfGBS::readMLP(const std::string& filename, double target_length, bool me
     }
   }
 
-  load_ribbons(ribbons, target_length, merge_smooth_corners, deform_value, restrict_params, c1_merge);
+  load_ribbons(ribbons, target_length, merge_smooth_corners, deform_value, restrict_params, c1_merge, global_inner_loop_scale);
 
   return true;
 }

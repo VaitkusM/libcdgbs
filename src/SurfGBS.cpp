@@ -31,7 +31,7 @@ SurfGBS::SurfGBS()
 
 }
 
-void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, bool merge_corners, double deform_value, bool restrict_params, bool c1_merge)
+void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, bool merge_corners, double deform_value, bool restrict_params, bool c1_merge, double global_inner_loop_scale)
 {
   ribbons = ribbon_surfs;
 
@@ -39,6 +39,7 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   SurfGBS::deform_value = deform_value;
   SurfGBS::restrict_params = restrict_params;
   SurfGBS::c1_merge = c1_merge;
+  SurfGBS::global_inner_loop_scale = global_inner_loop_scale;
 
   num_segments.clear();
   num_segments.resize(ribbons.size());
@@ -71,9 +72,9 @@ static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > 
     }
 }
 
-void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge)
+void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge, double global_inner_loop_scale)
 {
-  load_ribbons(ribbon_surfs, target_length, merge_smooth_corners, deform_value, restrict_params, c1_merge);
+  load_ribbons(ribbon_surfs, target_length, merge_smooth_corners, deform_value, restrict_params, c1_merge, global_inner_loop_scale);
   compute_domain_boundary();
   // writeLoops(domain_boundary_curves, "/tmp/boundary.obj");
   compute_domain_mesh();
@@ -347,8 +348,23 @@ bool SurfGBS::compute_domain_boundary()
       // }
       GeomUtil::shiftByVector(domain_boundary_curves[loop], cog);
     }
+    if(global_inner_loop_scale < 1.0) {
+      // Scaling down inner loops
+      for(size_t loop = 1; loop < num_loops; ++loop) {
+        const double scale = global_inner_loop_scale;
+        std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
+        const auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
+        for (auto& sub : domain_boundary_curves[loop]) {
+          for (auto& p : sub) {
+            p = cog + scale * (p - cog);
+          }
+        }
+      }
+    }
+    else {
+      //resolve_self_intersections();
+    }
 
-    resolve_self_intersections();
   }
 
   if (debug_outputs) {
@@ -785,6 +801,19 @@ double SurfGBS::calc_inner_loop_scale(size_t loop) const
 
 void SurfGBS::resolve_self_intersections(size_t max_iter)
 {
+  // Compute outer loop bounding box
+  Eigen::Vector3d bb_min = Eigen::Vector3d::Constant(std::numeric_limits<double>::max());
+  Eigen::Vector3d bb_max = Eigen::Vector3d::Constant(std::numeric_limits<double>::lowest());
+  for (const auto& side : domain_boundary_curves[0]) {
+    for (const auto& pt : side) {
+      bb_min = bb_min.cwiseMin(pt);
+      bb_max = bb_max.cwiseMax(pt);
+    }
+  }
+  double bb_diag = (bb_max - bb_min).norm();
+
+  const double scales[4] = {0.8, 0.6, 0.5, 0.4};
+  double scale = 1.0;
   auto domain_boundary_curves_copy = domain_boundary_curves;
   bool self_intersection = false;
   size_t num_iters = 0;
@@ -805,7 +834,7 @@ void SurfGBS::resolve_self_intersections(size_t max_iter)
             for(size_t side = 0; side < num_sides[loop]; ++side){
               for(size_t i = 0; i < pts[side].size(); ++i) {
                 for(size_t j = 0; j < other_pts[other_side].size(); ++j) {
-                  if( (pts[side][i] - other_pts[other_side][j]).norm() < 16.0*target_length ) {
+                  if( (pts[side][i] - other_pts[other_side][j]).norm() < 0.1 * bb_diag /*16.0*target_length*/ ) {
                     intersection_idx = static_cast<int>(i);
                     intersection_side = static_cast<int>(side);
                   }
@@ -839,7 +868,7 @@ void SurfGBS::resolve_self_intersections(size_t max_iter)
       domain_boundary_curves = domain_boundary_curves_copy;
       // Scaling down inner loops
       for(size_t loop = 1; loop < num_loops; ++loop) {
-        const double scale = 0.7;
+        const double scale = scales[std::min(num_iters, size_t(3))];
         std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
         const auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
         for (auto& sub : domain_boundary_curves[loop]) {
