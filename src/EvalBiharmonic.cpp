@@ -80,7 +80,7 @@ bool SurfGBS::evaluate_mesh_biharmonic(Mesh& mesh, bool reset)
     for (size_t side = 0; side < ribbons[loop].size(); ++side) {
       // Boundary cross derivative samples and tangent derivative samples
       const auto& cd = boundary_crossderivatives[loop][side];
-      const auto& td = boundary_tangents[loop][side];
+      const auto& td = boundary_tangents_unnormalized[loop][side];
       std::vector<Mesh::Point> grad_h, grad_s;
       auto f_h = [this, loop, side](Mesh::VertexHandle vh) {
         const auto& hs = side_deformed[loop][side] ? h_coords_deformed : h_coords;

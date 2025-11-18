@@ -230,6 +230,7 @@ bool SurfGBS::compute_domain_boundary()
             auto nn = (du ^ dv).normalized();
             auto tt = du.normalized();
             boundary_tangents[loop][side].push_back({ tt[0], tt[1], tt[2] });
+            boundary_tangents_unnormalized[loop][side].push_back({ du[0], du[1], du[2] });
             boundary_normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
             boundary_crossderivatives[loop][side].push_back({ dv[0], dv[1], dv[2] });
             domain_boundary_params[loop][side].push_back(u);

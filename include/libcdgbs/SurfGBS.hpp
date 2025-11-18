@@ -31,6 +31,7 @@ namespace libcdgbs {
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_points;
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_normals;
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_tangents;
+    std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_tangents_unnormalized;
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > boundary_crossderivatives;
 
     std::vector<std::vector<std::vector<Eigen::Vector3d> > > developed_boundary_curves;
