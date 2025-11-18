@@ -17,6 +17,11 @@ namespace libcdgbs {
       REGULAR
     } domain_type;
 
+    typedef enum {
+      GBS,
+      BIHARMONIC
+    } SurfaceType;
+
     std::vector<std::vector<Ribbon> > ribbons;
     std::vector<std::vector<size_t> > num_segments;
 
@@ -81,7 +86,9 @@ namespace libcdgbs {
     bool compute_domain_mesh();
     bool compute_local_parameters();
     bool compute_blend_functions();
-    bool evaluate_mesh(Mesh& mesh, bool reset = true);
+    bool evaluate_mesh(Mesh& mesh, bool reset = true, SurfaceType surface_type = GBS);
+    bool evaluate_mesh_gbs(Mesh& mesh, bool reset = true);
+    bool evaluate_mesh_biharmonic(Mesh& mesh, bool reset = true);
 
     bool compute_harmonic_parameters();
     bool compute_deformed_parameters();

@@ -18,6 +18,11 @@ namespace libcdgbs {
     ClosestResult findClosestFace(Point pt) const;
     double dist2Face(Point pt, FaceHandle ff) const;
 
+    void computeFaceGradientofFunction(
+      std::function<double(VertexHandle)> func,
+      std::vector<Point>& outGrads
+    ) const;
+
     Point interpolateInFace(FaceHandle f, Point bary) const;
     
 

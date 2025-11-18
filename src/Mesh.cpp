@@ -147,6 +147,28 @@ double Mesh::dist2Face(Point pt, FaceHandle ff) const
   return (pt - calc_face_centroid(ff)).norm(); 
 }
 
+void Mesh::computeFaceGradientofFunction(
+  std::function<double(VertexHandle)> func,
+  std::vector<Point>& outGrads
+) const {
+  outGrads.clear();
+  outGrads.resize(n_faces());
+
+  for (auto ff : faces()) {
+    Mesh::Point gradient(0.0, 0.0, 0.0);
+    double A = calc_sector_area(halfedge_handle(ff));
+    for (auto fh : fh_range(ff)) {
+      auto ev = calc_edge_vector(fh);
+      auto vv = to_vertex_handle(next_halfedge_handle(fh));
+      double u = func(vv);
+      gradient += u * Mesh::Point(-ev[1], ev[0], 0.0);
+    }
+    gradient /= 2.0 * A;
+
+    outGrads[ff.idx()] = gradient;
+  }
+}
+
 void Mesh::barycentricCoordinates(
   const Point& pt,
   const Point& p1,

@@ -82,6 +82,69 @@ void MatrixUtil::buildMatrixVertexLaplace(
 
 }
 
+double voronoiWeight(
+  const Mesh& mesh,
+  Mesh::HalfedgeHandle in_he)
+{
+  // Returns the area of the triangle bounded by in_he that is closest
+// to the vertex pointed to by in_he.
+  if (mesh.is_boundary(in_he)) {
+    return 0.0;
+  }
+
+  auto next = mesh.next_halfedge_handle(in_he);
+  auto prev = mesh.prev_halfedge_handle(in_he);
+  double c2 = mesh.calc_edge_vector(in_he).sqrnorm();
+  double b2 = mesh.calc_edge_vector(next).sqrnorm();
+  double a2 = mesh.calc_edge_vector(prev).sqrnorm();
+  double alpha = mesh.calc_sector_angle(in_he);
+
+  if (a2 + b2 < c2)                // obtuse gamma
+    return 0.125 * b2 * std::tan(alpha);
+  if (a2 + c2 < b2)                // obtuse beta
+    return 0.125 * c2 * std::tan(alpha);
+  if (b2 + c2 < a2) {              // obtuse alpha
+    double b = std::sqrt(b2), c = std::sqrt(c2);
+    double total_area = 0.5 * b * c * std::sin(alpha);
+    double beta = mesh.calc_sector_angle(prev);
+    double gamma = mesh.calc_sector_angle(next);
+    return total_area - 0.125 * (b2 * std::tan(gamma) + c2 * std::tan(beta));
+  }
+
+  double r2 = 0.25 * a2 / std::pow(std::sin(alpha), 2); // squared circumradius
+  auto area = [r2](double x2) {
+    return 0.125 * std::sqrt(x2) * std::sqrt(std::max(4.0 * r2 - x2, 0.0));
+    };
+  return area(b2) + area(c2);
+
+}
+
+void MatrixUtil::buildMatrixVertexMass(
+  const Mesh& mesh,
+  SparseMatrix& Mass,
+  bool          preallocated
+)
+{
+  int num_v = mesh.n_vertices();
+  if (Mass.rows() < num_v || Mass.cols() < num_v) {
+    Mass.resize(num_v, num_v);
+  }
+  if (!preallocated) {
+    Eigen::VectorXd nnz = Eigen::VectorXd::Zero(num_v);
+    for (auto vv : mesh.vertices()) {
+      nnz(vv.idx()) = 1;
+    }
+    Mass.makeCompressed();
+    Mass.reserve(nnz);
+  }
+
+  for (auto vv : mesh.vertices()) {
+    for (auto he : mesh.vih_range(vv)) {
+      Mass.coeffRef(vv.idx(), vv.idx()) += voronoiWeight(mesh, he);
+    }
+  }
+}
+
 
 void MatrixUtil::addConstraint2Matrix(
   const Mesh& mesh,
@@ -254,4 +317,91 @@ bool MatrixUtil::solveLinearSystem(
     return false;
   }
   return true;
+}
+
+void MatrixUtil::slice(
+  const Eigen::SparseMatrix<double>& X,
+  const Eigen::VectorXi& R,
+  const Eigen::VectorXi& C,
+  Eigen::SparseMatrix<double>& Y
+)
+{
+  // Based on https://github.com/libigl/libigl/blob/main/include/igl/slice.cpp
+
+  int xm = X.rows();
+  int xn = X.cols();
+  int ym = R.size();
+  int yn = C.size();
+
+  // special case when R or C is empty
+  if (ym == 0 || yn == 0)
+  {
+    Y.resize(ym, yn);
+    return;
+  }
+
+  assert(R.minCoeff() >= 0);
+  assert(R.maxCoeff() < xm);
+  assert(C.minCoeff() >= 0);
+  assert(C.maxCoeff() < xn);
+
+  // Build reindexing maps for columns and rows
+  std::vector<std::vector<typename Eigen::VectorXi::Scalar>> RI;
+  RI.resize(xm);
+  for (int i = 0; i < ym; i++)
+  {
+    RI[R(i)].push_back(i);
+  }
+  std::vector<std::vector<typename Eigen::VectorXi::Scalar>> CI;
+  CI.resize(xn);
+  for (int i = 0; i < yn; i++)
+  {
+    CI[C(i)].push_back(i);
+  }
+
+  // Take a guess at the number of nonzeros (this assumes uniform distribution
+  // not banded or heavily diagonal)
+  std::vector<Eigen::Triplet<double>> entries;
+  entries.reserve((X.nonZeros() / (X.rows() * X.cols())) * (ym * yn));
+
+  // Iterate over outside
+  for (int k = 0; k < X.outerSize(); ++k)
+  {
+    // Iterate over inside
+    for (typename Eigen::SparseMatrix<double>::InnerIterator it(X, k); it; ++it)
+    {
+      for (auto rit = RI[it.row()].begin(); rit != RI[it.row()].end(); rit++)
+      {
+        for (auto cit = CI[it.col()].begin(); cit != CI[it.col()].end(); cit++)
+        {
+          entries.emplace_back(*rit, *cit, it.value());
+        }
+      }
+    }
+  }
+  Y.resize(ym, yn);
+  Y.setFromTriplets(entries.begin(), entries.end());
+}
+
+void MatrixUtil::slice_into(
+  const Eigen::SparseMatrix<double>& X,
+  const Eigen::VectorXi& R,
+  const Eigen::VectorXi& C,
+  Eigen::SparseMatrix<double>& Y
+)
+{
+  //Based on https://github.com/libigl/libigl/blob/main/include/igl/slice_into.cpp
+
+  // create temporary dynamic sparse matrix
+  Eigen::SparseMatrix<double/*, Eigen::RowMajor, int*/> dyn_Y(Y);
+  // Iterate over outside
+  for (int k = 0; k < X.outerSize(); ++k)
+  {
+    // Iterate over inside
+    for (typename Eigen::SparseMatrix<double>::InnerIterator it(X, k); it; ++it)
+    {
+      dyn_Y.coeffRef(R(it.row()), C(it.col())) = it.value();
+    }
+  }
+  Y = Eigen::SparseMatrix<double>(dyn_Y);
 }

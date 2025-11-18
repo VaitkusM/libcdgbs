@@ -18,6 +18,12 @@ namespace MatrixUtil {
     bool preallocated = false
   );
 
+  void buildMatrixVertexMass(
+    const Mesh& mesh,
+    SparseMatrix& Mass,
+    bool preallocated = false
+  );
+
   void addConstraint2Matrix(
     const Mesh&        mesh,
     const VertexHandles& fixed_vertices,
@@ -67,5 +73,37 @@ namespace MatrixUtil {
     const SparseMatrix& AA,
     const DenseMatrix& bb,
     DenseMatrix& xx
+  );
+
+    // Act like the matlab X(row_indices,col_indices) operator, where
+  // row_indices, col_indices are non-negative integer indices.
+  //
+  // Inputs:
+  //   X  m by n matrix
+  //   R  list of row indices
+  //   C  list of column indices
+  // Output:
+  //   Y  #R by #C matrix
+  void slice(
+    const Eigen::SparseMatrix<double> &X,
+    const Eigen::VectorXi             &R,
+    const Eigen::VectorXi             &C,
+    Eigen::SparseMatrix<double>       &Y 
+  );
+
+  // Act like the matlab Y(row_indices,col_indices) = X
+  // 
+  // Inputs:
+  //   X  xm by xn rhs matrix
+  //   R  list of row indices
+  //   C  list of column indices
+  //   Y  ym by yn lhs matrix
+  // Output:
+  //   Y  ym by yn lhs matrix, same as input but Y(R,C) = X
+  void slice_into(
+    const Eigen::SparseMatrix<double> &X,
+    const Eigen::VectorXi             &R,
+    const Eigen::VectorXi             &C,
+    Eigen::SparseMatrix<double>       &Y
   );
 }

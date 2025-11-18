@@ -53,7 +53,7 @@ namespace libcdgbs {
     }
 
     gbs.compute_blend_functions();
-    gbs.evaluate_mesh(gbs.meshSurface, true);
+    gbs.evaluate_mesh(gbs.meshSurface, true, SurfGBS::GBS);
     gbs.writeOBJ(gbs.meshSurface, filename + "_surf.obj");
     gbs.writeMGBS(filename + "_out.mgbs");
 

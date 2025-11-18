@@ -469,7 +469,21 @@ bool SurfGBS::compute_blend_functions()
   return true;
 }
 
-bool SurfGBS::evaluate_mesh(Mesh& mesh, bool reset)
+bool SurfGBS::evaluate_mesh(Mesh& mesh, bool reset, SurfaceType surface_type)
+{
+  if(surface_type == BIHARMONIC) {
+    return evaluate_mesh_biharmonic(mesh, reset);
+  }
+  else if (surface_type == GBS) {
+    return evaluate_mesh_gbs(mesh, reset);
+  }
+  else {
+    std::cerr << "Unknown surface type in evaluate_mesh" << std::endl;
+    return false;
+  }
+}
+
+bool SurfGBS::evaluate_mesh_gbs(Mesh& mesh, bool reset)
 {
   if (reset) {
     mesh = Mesh(meshDomain);
