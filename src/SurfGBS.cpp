@@ -72,7 +72,7 @@ static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > 
     }
 }
 
-void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge, double global_inner_loop_scale)
+void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge, double global_inner_loop_scale, SurfaceType surface_type)
 {
   load_ribbons(ribbon_surfs, target_length, merge_smooth_corners, deform_value, restrict_params, c1_merge, global_inner_loop_scale);
   compute_domain_boundary();
@@ -80,7 +80,7 @@ void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >&
   compute_domain_mesh();
   compute_local_parameters();
   compute_blend_functions();
-  evaluate_mesh(mesh);
+  evaluate_mesh(mesh, true, surface_type);
 }
 
 

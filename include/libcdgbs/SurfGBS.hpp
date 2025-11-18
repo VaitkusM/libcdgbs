@@ -68,7 +68,7 @@ namespace libcdgbs {
     SurfGBS();
 
     void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
-    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
+    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0, SurfaceType surface_type = GBS);
 
     void init_data();
 
