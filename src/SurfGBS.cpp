@@ -192,15 +192,20 @@ bool SurfGBS::compute_domain_boundary()
   boundary_points.clear();
   boundary_normals.clear();
   boundary_tangents.clear();
+  boundary_tangents_unnormalized.clear();
   boundary_crossderivatives.clear();
+
   boundary_points.resize(num_loops);
   boundary_normals.resize(num_loops);
   boundary_tangents.resize(num_loops);
+  boundary_tangents_unnormalized.resize(num_loops);
   boundary_crossderivatives.resize(num_loops);
+
   for (size_t loop = 0; loop < num_loops; ++loop) {
     boundary_points[loop].resize(num_sides[loop]);
     boundary_normals[loop].resize(num_sides[loop]);
     boundary_tangents[loop].resize(num_sides[loop]);
+    boundary_tangents_unnormalized[loop].resize(num_sides[loop]);
     boundary_crossderivatives[loop].resize(num_sides[loop]);
     domain_boundary_params[loop].resize(num_sides[loop]);
     for (size_t side = 0; side < num_sides[loop]; ++side) {
@@ -209,6 +214,7 @@ bool SurfGBS::compute_domain_boundary()
       boundary_points[loop][side].reserve(res);
       boundary_normals[loop][side].reserve(res);
       boundary_tangents[loop][side].reserve(res);
+      boundary_tangents_unnormalized[loop][side].reserve(res);
       boundary_crossderivatives[loop][side].reserve(res);
       domain_boundary_params[loop][side].reserve(res);
       if (num_segments[loop][side] > 1) {
@@ -249,6 +255,7 @@ bool SurfGBS::compute_domain_boundary()
           auto nn = (du ^ dv).normalized();
           auto tt = du.normalized();
           boundary_tangents[loop][side].push_back({ tt[0], tt[1], tt[2] });
+          boundary_tangents_unnormalized[loop][side].push_back({ du[0], du[1], du[2] });
           boundary_normals[loop][side].push_back({ nn[0], nn[1], nn[2] });
           boundary_crossderivatives[loop][side].push_back({ dv[0], dv[1], dv[2] });
           domain_boundary_params[loop][side].push_back(u);
