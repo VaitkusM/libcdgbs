@@ -133,7 +133,9 @@ bool SurfGBS::evaluate_mesh_biharmonic(Mesh& mesh, bool reset)
           double dh = gh | nn;
           double ds = gs | nn;
 
-          auto der = ll * (cd[ii] * dh + td[ii] * ds);
+          const auto cd_scale = deg_h[loop][side];
+
+          auto der = ll * (cd_scale * cd[ii] * dh + td[ii] * ds);
           der_bd(idx, 0) = der[0];
           der_bd(idx, 1) = der[1];
           der_bd(idx, 2) = der[2];
