@@ -22,6 +22,38 @@ namespace libcdgbs {
       BIHARMONIC
     } SurfaceType;
 
+    class InputParams {
+    public:
+        double target_length;
+        bool merge_smooth_corners;
+        double deform_value;
+        bool restrict_params;
+        bool c1_merge;
+        double global_inner_loop_scale;
+
+        InputParams() : target_length(3.0),
+            merge_smooth_corners(true),
+            deform_value(0.0),
+            restrict_params(true),
+            c1_merge(false),
+          global_inner_loop_scale(1.0) {
+        };
+
+        InputParams(double target_length_,
+            bool merge_smooth_corners_,
+            double deform_value_,
+            bool restrict_params_,
+            bool c1_merge_,
+            double global_inner_loop_scale_
+        ) : target_length(target_length_),
+            merge_smooth_corners(merge_smooth_corners_),
+            deform_value(deform_value_),
+            restrict_params(restrict_params_),
+            c1_merge(c1_merge_),
+          global_inner_loop_scale(global_inner_loop_scale_) {
+        };
+    };
+
     std::vector<std::vector<Ribbon> > ribbons;
     std::vector<std::vector<size_t> > num_segments;
 
@@ -51,6 +83,8 @@ namespace libcdgbs {
     std::vector<std::vector<size_t> > side_res;
     std::vector<std::vector<std::vector<size_t> > > side_segment_res; // indices of corners to be merged
 
+    std::vector<std::vector<std::array<double, 2> > > h_widths;
+
     std::vector<std::vector<std::vector<double> > > s_coords;
     std::vector<std::vector<std::vector<double> > > h_coords;
     std::vector<std::vector<std::vector<double> > > h_coords_deformed;
@@ -68,17 +102,17 @@ namespace libcdgbs {
 
     SurfGBS();
 
-    void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
-    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, double target_length, Mesh& mesh, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0, SurfaceType surface_type = GBS);
+    void load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs, const InputParams& params);
+    void load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, Mesh& mesh, const InputParams& params, SurfaceType surface_type = GBS);
 
     void init_data();
 
-    bool readMGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
-    bool readMLP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
-    bool readCGB(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
-    bool readGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
-    bool readGBP(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
-    bool readNGBS(const std::string& filename, double target_length = 3.0, bool merge_smooth_corners = true, double deform_value = 0.0, bool restrict_params = true, bool c1_merge = false, double global_inner_loop_scale = 1.0);
+    bool readMGBS(const std::string& filename, const InputParams& params = InputParams());
+    bool readMLP(const std::string& filename, const InputParams& params = InputParams());
+    bool readCGB(const std::string& filename, const InputParams& params = InputParams());
+    bool readGBS(const std::string& filename, const InputParams& params = InputParams());
+    bool readGBP(const std::string& filename, const InputParams& params = InputParams());
+    bool readNGBS(const std::string& filename, const InputParams& params = InputParams());
 
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
     bool writeMGBS(const std::string& filename) const;

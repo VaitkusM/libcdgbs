@@ -24,10 +24,10 @@ namespace libcdgbs {
   }
 
 
-  void Example::say_hello(const std::string& filename, double target_length, bool merge_smooth_corners, double deform_value, bool restrict_params, bool c1_merge, double global_inner_loop_scale) {
+  void Example::say_hello(const std::string& filename, const SurfGBS::InputParams& params) {
     gbs = SurfGBS();
     gbs.debug_outputs = true;
-    gbs.readMGBS(filename + ".mgbs", target_length, merge_smooth_corners, deform_value, restrict_params, c1_merge, global_inner_loop_scale);
+    gbs.readMGBS(filename + ".mgbs", params);
     gbs.compute_domain_boundary();
     gbs.compute_domain_mesh();
     gbs.writeOBJ(gbs.meshDomain, filename + ".obj");
