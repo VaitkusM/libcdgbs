@@ -97,7 +97,9 @@ bool SurfGBS::compute_harmonic_parameters()
           auto vtx = domain_boundary_vertices[loop][side_m1][i];
           size_t nseg = num_segments[loop][side_m1];
           if(nseg == 1 || !restrict_params) {
-            side_pts_m1.push_back(vtx);
+            if(!use_h_widths || domain_boundary_params[loop][side_m1][i] > 1.0 - h_widths[loop][side][0]) {
+              side_pts_m1.push_back(vtx);
+            }
           }
           else {
             if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1)/nseg) {
@@ -109,7 +111,9 @@ bool SurfGBS::compute_harmonic_parameters()
           auto vtx = domain_boundary_vertices[loop][side_p1][i];
           size_t nseg = num_segments[loop][side_p1];
           if (nseg == 1 || !restrict_params) {
-            side_pts_p1.push_back(vtx);
+            if(!use_h_widths || domain_boundary_params[loop][side_p1][i] <= h_widths[loop][side][1]) {
+              side_pts_p1.push_back(vtx);
+            }
           }
           else{
             if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {
@@ -266,7 +270,9 @@ bool SurfGBS::compute_harmonic_parameters()
         auto vtx = domain_boundary_vertices[loop][side_m1][i];
         size_t nseg = num_segments[loop][side_m1];
         if (nseg == 1 || !restrict_params) {
-          side_pts_m1.push_back(vtx);
+          if(!use_h_widths || domain_boundary_params[loop][side_m1][i] > 1.0 - h_widths[loop][side][0]) {
+            side_pts_m1.push_back(vtx);
+          }
         }
         else {
           if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1) / nseg) {
@@ -278,7 +284,9 @@ bool SurfGBS::compute_harmonic_parameters()
         auto vtx = domain_boundary_vertices[loop][side_p1][i];
         size_t nseg = num_segments[loop][side_p1];
         if (nseg == 1 || !restrict_params) {
-          side_pts_p1.push_back(vtx);
+          if(!use_h_widths || domain_boundary_params[loop][side_p1][i] <= h_widths[loop][side][1]) {
+            side_pts_p1.push_back(vtx);
+          }
         }
         else {
           if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {

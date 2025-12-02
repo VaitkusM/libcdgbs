@@ -13,6 +13,7 @@ int main(int argc, char* argv[]) {
             params.restrict_params = (argc > 5) ? !(std::string(argv[5]) == "--norestrict") : true;
             params.c1_merge = (argc > 6) ? (std::string(argv[6]) == "--c1merge") : false;
             params.global_inner_loop_scale = (argc > 7) ? std::stod(argv[7]) : 1.0;
+            params.use_h_widths = (argc > 8) ? (std::string(argv[8]) == "--usehwidths") : true;
         }
     }
 

@@ -40,6 +40,7 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   SurfGBS::restrict_params = params.restrict_params;
   SurfGBS::c1_merge = params.c1_merge;
   SurfGBS::global_inner_loop_scale = params.global_inner_loop_scale;
+  SurfGBS::use_h_widths = params.use_h_widths;
 
   num_segments.clear();
   num_segments.resize(ribbons.size());
@@ -317,7 +318,7 @@ bool SurfGBS::compute_domain_boundary()
     std::vector<std::vector<Ribbon> > perimeter_ribbons(1, ribbons.front());
     scale_perimeter_ribbons(perimeter_ribbons);
     SurfGBS perimeter_gbs;
-    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0});
+    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true});
     perimeter_gbs.num_segments[0] = num_segments[0];
     perimeter_gbs.side_segment_res[0] = side_segment_res[0];
     perimeter_gbs.compute_domain_boundary();
@@ -384,6 +385,8 @@ bool SurfGBS::compute_domain_boundary()
     writeLoops(developed_boundary_curves_normalized, "boundary_normalized.obj");
     writeLoops(boundary_points, "boundary_xyz.obj");
   }
+
+  compute_auto_h_widths(30.0, 2.0);
 
   return true;
 }
@@ -1019,6 +1022,115 @@ void SurfGBS::merge_smooth_corners() {
   }
   ribbons = new_ribbons;
   init_data();
+}
+
+void SurfGBS::compute_auto_h_widths(double turning_angle, double length_ratio)
+{
+  auto turning_angle_rad = turning_angle * M_PI / 180.0;
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    size_t num_sides = ribbons[loop].size();
+    if (num_sides == 1 || loop >= 1) { continue; }
+    for (size_t side = 0; side < num_sides; ++side) {
+      size_t side_m1 = prev(loop, side);
+      size_t side_p1 = next(loop, side);
+      const auto& s = domain_boundary_curves[loop][side];
+      auto s_m1 = domain_boundary_curves[loop][side_m1];
+      //Reverse s_m1 to have same orientation
+      s_m1 = SubCurve3D(s_m1.rbegin(), s_m1.rend());
+      const auto& s_p1 = domain_boundary_curves[loop][side_p1];
+      std::vector<double> lengths_m1, lengths_p1, lengths_i;
+      GeomUtil::getEdgeLengths(s_m1, lengths_m1, false);
+      GeomUtil::getEdgeLengths(s_p1, lengths_p1, false);
+      GeomUtil::getEdgeLengths(s, lengths_i, false);
+      double len_m1 = std::accumulate(lengths_m1.begin(), lengths_m1.end(), 0.0); // Summing up edge lengths
+      double len_p1 = std::accumulate(lengths_p1.begin(), lengths_p1.end(), 0.0); // Summing up edge lengths
+      double len_i = std::accumulate(lengths_i.begin(), lengths_i.end(), 0.0);
+      // compute cumulative lenghts
+      std::vector<double> cum_lengths_m1(1, 0.0);
+      cum_lengths_m1.reserve(lengths_m1.size() + 1);
+      std::vector<double> cum_lengths_p1(1, 0.0);
+      cum_lengths_p1.reserve(lengths_p1.size() + 1);
+      std::vector<double> cum_lengths_i(1, 0.0);
+      cum_lengths_i.reserve(lengths_i.size() + 1);
+      for (const auto& l : lengths_m1) { cum_lengths_m1.push_back(cum_lengths_m1.back() + l); }
+      for (const auto& l : lengths_p1) { cum_lengths_p1.push_back(cum_lengths_p1.back() + l); }
+      for (const auto& l : lengths_i) { cum_lengths_i.push_back(cum_lengths_i.back() + l); }
+
+      // Now compute h_widths based on length ratio and turning angle
+      for(size_t ii = 0; ii < h_widths[loop][side].size(); ++ii) {
+        h_widths[loop][side][ii] = 1.0; // Reset to max
+        
+        if(ii == 0 && num_segments[loop][side_m1] <= 1) {
+          // side - 1
+          double max_ratio = 0.0;
+          for (size_t jj = 1; jj < cum_lengths_m1.size(); ++jj) {
+            double l_m1 = cum_lengths_m1[jj];
+            
+            double ratio = l_m1 / len_i;
+            max_ratio = std::max(ratio, max_ratio);
+            if (ratio >= length_ratio) {
+              h_widths[loop][side][ii] = std::min(h_widths[loop][side][ii], l_m1 / len_m1);
+              break;
+            }
+          }
+
+          double max_angle = 0.0;
+          auto t_0 = (s_m1[1] - s_m1[0]).normalized();
+          for(size_t jj = 1; jj < s_m1.size(); ++jj) {
+            auto t_i = (s_m1[jj] - s_m1[0]).normalized();
+            double angle = abs(GeomUtil::getAngle(t_0, t_i));
+            max_angle = std::max(angle, max_angle);
+            if (angle >= turning_angle_rad) {
+              h_widths[loop][side][ii] = std::min(h_widths[loop][side][ii], cum_lengths_m1[jj] / len_m1);
+              break;
+            }
+          }
+          // // Print max values
+          // std::cout << "Loop " << loop << " Side " << side << " h-widths[" << ii << "] max length ratio: " << max_ratio 
+          //   << ", max turning angle (deg): " << max_angle * 180.0 / M_PI << std::endl;
+        }
+        else if (ii == 1 && num_segments[loop][side_p1] <= 1) {
+          // side + 1
+          double max_ratio = 0.0;
+          for (size_t jj = 1; jj < cum_lengths_p1.size(); ++jj) {
+            double l_p1 = cum_lengths_p1[jj];
+            double ratio = l_p1 / len_i;
+            max_ratio = std::max(ratio, max_ratio);
+            if (ratio >= length_ratio) {
+              h_widths[loop][side][ii] = std::min(h_widths[loop][side][ii], cum_lengths_p1[jj] / len_p1);
+              break;
+            }
+          }
+
+          double max_angle = 0.0;
+          auto t_0 = (s_p1[1] - s_p1[0]).normalized();
+          for(size_t jj = 1; jj < s_p1.size(); ++jj) {
+            auto t_i = (s_p1[jj] - s_p1[0]).normalized();
+            double angle = abs(GeomUtil::getAngle(t_0, t_i));
+            max_angle = std::max(angle, max_angle);
+            if (angle >= turning_angle_rad) {
+              h_widths[loop][side][ii] = std::min(h_widths[loop][side][ii], cum_lengths_p1[jj] / len_p1);
+              break;
+            }
+          }
+          // // Print max values
+          // std::cout << "Loop " << loop << " Side " << side << " h-widths[" << ii << "] max length ratio: " << max_ratio 
+          //   << ", max turning angle (deg): " << max_angle * 180.0 / M_PI << std::endl;
+        }
+      }
+    }
+  }
+
+  // Print h-widths
+  for (size_t loop = 0; loop < num_loops; ++loop) {
+    for (size_t side = 0; side < num_sides[loop]; ++side) {
+      std::cout << "Loop " << loop << " Side " << side << " h-widths: ";
+      for (const auto& hw : h_widths[loop][side]) {
+        std::cout << hw << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
 }
 
 inline size_t circular_index(size_t i, int offset, size_t n) {

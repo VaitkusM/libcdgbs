@@ -30,13 +30,15 @@ namespace libcdgbs {
         bool restrict_params;
         bool c1_merge;
         double global_inner_loop_scale;
+        bool use_h_widths;
 
         InputParams() : target_length(3.0),
             merge_smooth_corners(true),
             deform_value(0.0),
             restrict_params(true),
             c1_merge(false),
-          global_inner_loop_scale(1.0) {
+          global_inner_loop_scale(1.0),
+          use_h_widths(true) {
         };
 
         InputParams(double target_length_,
@@ -44,13 +46,15 @@ namespace libcdgbs {
             double deform_value_,
             bool restrict_params_,
             bool c1_merge_,
-            double global_inner_loop_scale_
+            double global_inner_loop_scale_,
+            bool use_h_widths_
         ) : target_length(target_length_),
             merge_smooth_corners(merge_smooth_corners_),
             deform_value(deform_value_),
             restrict_params(restrict_params_),
             c1_merge(c1_merge_),
-          global_inner_loop_scale(global_inner_loop_scale_) {
+          global_inner_loop_scale(global_inner_loop_scale_),
+          use_h_widths(use_h_widths_) {
         };
     };
 
@@ -97,6 +101,8 @@ namespace libcdgbs {
     double deform_value = 0.0;
 
     double global_inner_loop_scale = 1.0;
+
+    bool use_h_widths = true;
 
     bool debug_outputs = false;
 
@@ -152,6 +158,8 @@ namespace libcdgbs {
 
     void merge_smooth_corners();
     bool c1_merge = false;
+
+    void compute_auto_h_widths(double turning_angle = 30.0, double length_ratio = 2.0);
 
     size_t prev(size_t loop, size_t side) const;
     size_t next(size_t loop, size_t side) const;
