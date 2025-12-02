@@ -1121,16 +1121,16 @@ void SurfGBS::compute_auto_h_widths(double turning_angle, double length_ratio)
     }
   }
 
-  // Print h-widths
-  for (size_t loop = 0; loop < num_loops; ++loop) {
-    for (size_t side = 0; side < num_sides[loop]; ++side) {
-      std::cout << "Loop " << loop << " Side " << side << " h-widths: ";
-      for (const auto& hw : h_widths[loop][side]) {
-        std::cout << hw << " ";
-      }
-      std::cout << std::endl;
-    }
-  }
+  // // Print h-widths
+  // for (size_t loop = 0; loop < num_loops; ++loop) {
+  //   for (size_t side = 0; side < num_sides[loop]; ++side) {
+  //     std::cout << "Loop " << loop << " Side " << side << " h-widths: ";
+  //     for (const auto& hw : h_widths[loop][side]) {
+  //       std::cout << hw << " ";
+  //     }
+  //     std::cout << std::endl;
+  //   }
+  // }
 }
 
 inline size_t circular_index(size_t i, int offset, size_t n) {
