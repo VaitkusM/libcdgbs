@@ -13,11 +13,11 @@ using Curve3D = std::vector<SubCurve3D>;
 using Curves3D = std::vector<Curve3D>;
 
 //calculate arclength of each ribbon boundary B-spline curve
-double getLength(const Geometry::BSSurface& rib, double u_start = 0.0, double u_end = 1.0) {
+double getLength(const Geometry::BSSurface& rib, double u_start = 0.0, double u_end = 1.0, size_t num_samples = 200) {
   double length = 0.0;
-  for (size_t i = 0; i < 200; ++i) {
-    double ua = (1.0 - (double(i) / 200.0)) * u_start + (double(i) / 200.0) * u_end;
-    double ub = (1.0 - (double(i + 1) / 200.0)) * u_start + (double(i + 1) / 200.0) * u_end;;
+  for (size_t i = 0; i < num_samples; ++i) {
+    double ua = (1.0 - (double(i) / double(num_samples))) * u_start + (double(i) / double(num_samples)) * u_end;
+    double ub = (1.0 - (double(i + 1) / double(num_samples))) * u_start + (double(i + 1) / double(num_samples)) * u_end;;
     auto pa = rib.eval(ua, 0.0);
     auto pb = rib.eval(ub, 0.0);
     length += (pb - pa).norm();
@@ -250,26 +250,26 @@ bool SurfGBS::compute_domain_boundary()
       }
       else {
         for (size_t i = 0; i < res; ++i) {
-          double u = double(i) / (res - 1);
+          double u = double(i) / double(res - 1);
           // Sample by arclength
           if (arclength_sampling) {
-            double total_length = getLength(rib, 0.0, 1.0);
+            double total_length = getLength(rib, 0.0, 1.0, res - 1);
             double target_length = (total_length * double(i)) / double(res - 1);
             double accum_length = 0.0;
-            double prev_u = 0.0;
             auto prev_pt = rib.eval(0.0, 0.0);
-            const size_t num_subsamples = 100;
-            for (size_t j = 1; j <= num_subsamples; ++j) {
+            const size_t num_subsamples = res - 1;
+            for (size_t j = 0; j <= num_subsamples; ++j) {
               double curr_u = (double(j) / double(num_subsamples));
               auto curr_pt = rib.eval(curr_u, 0.0);
               accum_length += (curr_pt - prev_pt).norm();
-              if (accum_length >= target_length) {
+              if (std::abs(accum_length - target_length) < 1e-6) {
                 u = curr_u;
                 break;
               }
               prev_pt = curr_pt;
             }
           }
+          std::cout << "Loop " << loop << " Side " << side << " Param " << u << std::endl;
 
           Geometry::VectorMatrix duv;
           auto pt = rib.eval(u, 0.0, 1, duv);
