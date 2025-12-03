@@ -31,6 +31,7 @@ namespace libcdgbs {
         bool c1_merge;
         double global_inner_loop_scale;
         bool use_h_widths;
+        bool arclength_sampling;
 
         InputParams() : target_length(3.0),
             merge_smooth_corners(true),
@@ -38,7 +39,8 @@ namespace libcdgbs {
             restrict_params(true),
             c1_merge(false),
           global_inner_loop_scale(1.0),
-          use_h_widths(true) {
+          use_h_widths(true),
+          arclength_sampling(true) {
         };
 
         InputParams(double target_length_,
@@ -47,14 +49,16 @@ namespace libcdgbs {
             bool restrict_params_,
             bool c1_merge_,
             double global_inner_loop_scale_,
-            bool use_h_widths_
+            bool use_h_widths_,
+            bool arclength_sampling_
         ) : target_length(target_length_),
             merge_smooth_corners(merge_smooth_corners_),
             deform_value(deform_value_),
             restrict_params(restrict_params_),
             c1_merge(c1_merge_),
           global_inner_loop_scale(global_inner_loop_scale_),
-          use_h_widths(use_h_widths_) {
+          use_h_widths(use_h_widths_),
+          arclength_sampling(arclength_sampling_){
         };
     };
 
@@ -103,6 +107,8 @@ namespace libcdgbs {
     double global_inner_loop_scale = 1.0;
 
     bool use_h_widths = true;
+
+    bool arclength_sampling = true;
 
     bool debug_outputs = false;
 

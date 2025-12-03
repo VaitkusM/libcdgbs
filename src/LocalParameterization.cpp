@@ -136,31 +136,59 @@ bool SurfGBS::compute_harmonic_parameters()
         );
 
         if(restrict_params) {
-          addConstraint2RHS(
-            mesh,
-            side_pts_m1,
-            dh,
-            idx,
-            true,
-            0.0,
-            1.0,
-            0.0,
-            true,
-            true
-          );
-  
-          addConstraint2RHS(
-            mesh,
-            side_pts_p1,
-            dh,
-            idx,
-            true,
-            0.0,
-            0.0,
-            1.0,
-            true,
-            true
-          );
+          if (num_segments[loop][side_m1] > 1 || !arclength_sampling) {
+            addConstraint2RHS(
+              mesh,
+              side_pts_m1,
+              dh,
+              idx,
+              true,
+              0.0,
+              1.0,
+              0.0,
+              true,
+              true
+            );
+          }
+          else {
+            addConstraint2RHS(
+              mesh,
+              side_pts_m1,
+              domain_boundary_params[loop][side_m1],
+              dh,
+              idx,
+              true,
+              true,
+              true
+            );
+          }
+          
+          if(num_segments[loop][side_p1] > 1 || !arclength_sampling) {
+            addConstraint2RHS(
+              mesh,
+              side_pts_p1,
+              dh,
+              idx,
+              true,
+              0.0,
+              0.0,
+              1.0,
+              true,
+              true
+            );
+          }
+          else {
+            addConstraint2RHS(
+              mesh,
+              side_pts_p1,
+              domain_boundary_params[loop][side_p1],
+              dh,
+              idx,
+              false,
+              true,
+              true
+            );
+          }
         }
         else {
           addConstraint2RHS(

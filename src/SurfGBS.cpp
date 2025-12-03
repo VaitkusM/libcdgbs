@@ -41,6 +41,7 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   SurfGBS::c1_merge = params.c1_merge;
   SurfGBS::global_inner_loop_scale = params.global_inner_loop_scale;
   SurfGBS::use_h_widths = params.use_h_widths;
+  SurfGBS::arclength_sampling = params.arclength_sampling;
 
   num_segments.clear();
   num_segments.resize(ribbons.size());
@@ -250,6 +251,26 @@ bool SurfGBS::compute_domain_boundary()
       else {
         for (size_t i = 0; i < res; ++i) {
           double u = double(i) / (res - 1);
+          // Sample by arclength
+          if (arclength_sampling) {
+            double total_length = getLength(rib, 0.0, 1.0);
+            double target_length = (total_length * double(i)) / double(res - 1);
+            double accum_length = 0.0;
+            double prev_u = 0.0;
+            auto prev_pt = rib.eval(0.0, 0.0);
+            const size_t num_subsamples = 100;
+            for (size_t j = 1; j <= num_subsamples; ++j) {
+              double curr_u = (double(j) / double(num_subsamples));
+              auto curr_pt = rib.eval(curr_u, 0.0);
+              accum_length += (curr_pt - prev_pt).norm();
+              if (accum_length >= target_length) {
+                u = curr_u;
+                break;
+              }
+              prev_pt = curr_pt;
+            }
+          }
+
           Geometry::VectorMatrix duv;
           auto pt = rib.eval(u, 0.0, 1, duv);
 
@@ -318,7 +339,7 @@ bool SurfGBS::compute_domain_boundary()
     std::vector<std::vector<Ribbon> > perimeter_ribbons(1, ribbons.front());
     scale_perimeter_ribbons(perimeter_ribbons);
     SurfGBS perimeter_gbs;
-    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true});
+    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true, true});
     perimeter_gbs.num_segments[0] = num_segments[0];
     perimeter_gbs.side_segment_res[0] = side_segment_res[0];
     perimeter_gbs.compute_domain_boundary();
