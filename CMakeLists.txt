@@ -10,7 +10,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 
   # Debug build flags
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
-  if (NOT WIN32)
+  if (NOT WIN32 AND NOT APPLE)
     # Enable AddressSanitizer on non-Windows platforms only
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
