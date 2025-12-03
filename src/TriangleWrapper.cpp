@@ -106,7 +106,7 @@ namespace libcdgbs {
     // Recompute options for this run: no‐Steiner on loops + quality + area limit
     double A = (std::sqrt(3.0) / 4.0) * L_target * L_target;
     std::ostringstream opts;
-    opts << "QpzYDq30a" << std::fixed << std::setprecision(6) << A;
+    opts << "QpzYDq25a" << std::fixed << std::setprecision(6) << A;
     triangulate(const_cast<char*>(opts.str().c_str()), &in, &out,
       (struct triangulateio*)nullptr);
 
