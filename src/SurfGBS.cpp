@@ -231,8 +231,28 @@ bool SurfGBS::compute_domain_boundary()
             if(i > 0 && j == 0) {
               continue; //skip duplicate point at segment boundary
             }
-            double u = (1.0 - (double(j) / double(seg_res - 1))) * u_start + (double(j) / double(seg_res - 1)) * u_end;
-            Geometry::VectorMatrix duv;
+            const double len = getLength(rib, u_start, u_end, 1000);
+            double uj = (double(j) / double(seg_res - 1));
+            if(arclength_sampling && j > 0 && j < seg_res - 1) { // Find point with arclength u * len by bisection
+              double target_len = uj * len;
+              double low_u = 0.0;
+              double high_u = 1.0;
+              double mid_u = 0.5;
+              const size_t max_iters = 20;
+              for(size_t iter = 0; iter < max_iters; ++iter) {
+                mid_u = 0.5 * (low_u + high_u);
+                double mid_uj = (1.0 - mid_u) * u_start + mid_u * u_end;
+                double mid_len = getLength(rib, u_start, mid_uj, 1000);
+                if(mid_len < target_len) {
+                  low_u = mid_u;
+                }
+                else {
+                  high_u = mid_u;
+                }
+              }
+              uj = mid_u;
+            }
+            double u = (1.0 - uj) * u_start + uj * u_end;            Geometry::VectorMatrix duv;
             auto pt = rib.eval(u, 0.0, 1, duv);
 
             boundary_points[loop][side].push_back({ pt[0], pt[1], pt[2] });
@@ -251,9 +271,8 @@ bool SurfGBS::compute_domain_boundary()
       else {
         for (size_t i = 0; i < res; ++i) {
           double u = double(i) / double(res - 1);
-          
+          const double len = getLength(rib, 0.0, 1.0, 1000);
           if(arclength_sampling && i > 0 && i < res - 1) { // Find point with arclength u * len by bisection
-            double len = getLength(rib, 0.0, 1.0, 1000);
             double target_len = u * len;
             double low_u = 0.0;
             double high_u = 1.0;
