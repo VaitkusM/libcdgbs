@@ -251,24 +251,27 @@ bool SurfGBS::compute_domain_boundary()
       else {
         for (size_t i = 0; i < res; ++i) {
           double u = double(i) / double(res - 1);
-          // Sample by arclength
-          if (arclength_sampling) {
-            double total_length = getLength(rib, 0.0, 1.0, res - 1);
-            double target_length = (total_length * double(i)) / double(res - 1);
-            double accum_length = 0.0;
-            auto prev_pt = rib.eval(0.0, 0.0);
-            const size_t num_subsamples = res - 1;
-            for (size_t j = 0; j <= num_subsamples; ++j) {
-              double curr_u = (double(j) / double(num_subsamples));
-              auto curr_pt = rib.eval(curr_u, 0.0);
-              accum_length += (curr_pt - prev_pt).norm();
-              if (std::abs(accum_length - target_length) < 1e-6) {
-                u = curr_u;
-                break;
+          
+          if(arclength_sampling) { // Find point with arclength u * len by bisection
+            double len = getLength(rib, 0.0, 1.0, 1000);
+            double target_len = u * len;
+            double low_u = 0.0;
+            double high_u = 1.0;
+            double mid_u = 0.5;
+            const size_t max_iters = 20;
+            for(size_t iter = 0; iter < max_iters; ++iter) {
+              mid_u = 0.5 * (low_u + high_u);
+              double mid_len = getLength(rib, 0.0, mid_u, 1000);
+              if(mid_len < target_len) {
+                low_u = mid_u;
               }
-              prev_pt = curr_pt;
+              else {
+                high_u = mid_u;
+              }
             }
+            u = mid_u;
           }
+          std::cout << "Arclength sampling: " << arclength_sampling << std::endl;
           std::cout << "Loop " << loop << " Side " << side << " Param " << u << std::endl;
 
           Geometry::VectorMatrix duv;
@@ -286,6 +289,10 @@ bool SurfGBS::compute_domain_boundary()
           domain_boundary_params[loop][side].push_back(u);
         }
       }
+    }
+
+    if (debug_outputs) {
+      writeLoops(boundary_points, "boundary_3D.obj");
     }
 
     // Flip vector ?
