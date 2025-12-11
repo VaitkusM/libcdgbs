@@ -290,8 +290,8 @@ bool SurfGBS::compute_domain_boundary()
             }
             u = mid_u;
           }
-          std::cout << "Arclength sampling: " << arclength_sampling << std::endl;
-          std::cout << "Loop " << loop << " Side " << side << " Param " << u << std::endl;
+          // std::cout << "Arclength sampling: " << arclength_sampling << std::endl;
+          // std::cout << "Loop " << loop << " Side " << side << " Param " << u << std::endl;
 
           Geometry::VectorMatrix duv;
           auto pt = rib.eval(u, 0.0, 1, duv);
