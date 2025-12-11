@@ -206,6 +206,8 @@ bool SurfGBS::compute_domain_boundary()
   boundary_tangents_unnormalized.resize(num_loops);
   boundary_crossderivatives.resize(num_loops);
 
+  const size_t arclength_res = 200;
+
   for (size_t loop = 0; loop < num_loops; ++loop) {
     boundary_points[loop].resize(num_sides[loop]);
     boundary_normals[loop].resize(num_sides[loop]);
@@ -231,7 +233,7 @@ bool SurfGBS::compute_domain_boundary()
             if(i > 0 && j == 0) {
               continue; //skip duplicate point at segment boundary
             }
-            const double len = getLength(rib, u_start, u_end, 1000);
+            const double len = getLength(rib, u_start, u_end, arclength_res);
             double uj = (double(j) / double(seg_res - 1));
             if(arclength_sampling && j > 0 && j < seg_res - 1) { // Find point with arclength u * len by bisection
               double target_len = uj * len;
@@ -242,7 +244,7 @@ bool SurfGBS::compute_domain_boundary()
               for(size_t iter = 0; iter < max_iters; ++iter) {
                 mid_u = 0.5 * (low_u + high_u);
                 double mid_uj = (1.0 - mid_u) * u_start + mid_u * u_end;
-                double mid_len = getLength(rib, u_start, mid_uj, 1000);
+                double mid_len = getLength(rib, u_start, mid_uj, arclength_res);
                 if(mid_len < target_len) {
                   low_u = mid_u;
                 }
@@ -271,7 +273,7 @@ bool SurfGBS::compute_domain_boundary()
       else {
         for (size_t i = 0; i < res; ++i) {
           double u = double(i) / double(res - 1);
-          const double len = getLength(rib, 0.0, 1.0, 1000);
+          const double len = getLength(rib, 0.0, 1.0, arclength_res);
           if(arclength_sampling && i > 0 && i < res - 1) { // Find point with arclength u * len by bisection
             double target_len = u * len;
             double low_u = 0.0;
@@ -280,7 +282,7 @@ bool SurfGBS::compute_domain_boundary()
             const size_t max_iters = 20;
             for(size_t iter = 0; iter < max_iters; ++iter) {
               mid_u = 0.5 * (low_u + high_u);
-              double mid_len = getLength(rib, 0.0, mid_u, 1000);
+              double mid_len = getLength(rib, 0.0, mid_u, arclength_res);
               if(mid_len < target_len) {
                 low_u = mid_u;
               }
