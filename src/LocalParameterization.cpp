@@ -136,7 +136,7 @@ bool SurfGBS::compute_harmonic_parameters()
         );
 
         if(restrict_params) {
-          if (num_segments[loop][side_m1] > 1 || !arclength_sampling) {
+          if (num_segments[loop][side_m1] > 1) {
             addConstraint2RHS(
               mesh,
               side_pts_m1,
@@ -163,7 +163,7 @@ bool SurfGBS::compute_harmonic_parameters()
             );
           }
           
-          if(num_segments[loop][side_p1] > 1 || !arclength_sampling) {
+          if(num_segments[loop][side_p1] > 1) {
             addConstraint2RHS(
               mesh,
               side_pts_p1,
@@ -368,16 +368,32 @@ bool SurfGBS::compute_harmonic_parameters()
         false
       );
 
-      addConstraint2RHS(
-        mesh,
-        side_pts,
-        domain_boundary_params[loop][side],
-        dd,
-        0,
-        false,
-        false,
-        false
-      );
+      if(true) {
+        addConstraint2RHS(
+          mesh,
+          side_pts,
+          domain_boundary_params[loop][side],
+          dd,
+          0,
+          false,
+          false,
+          false
+        );
+      }
+      else {
+        addConstraint2RHS(
+          mesh,
+          side_pts,
+          dd,
+          0,
+          true,
+          0.0,
+          0.0,
+          1.0,
+          false,
+          false
+        );
+      }
 
       addConstraint2RHS(
         mesh,

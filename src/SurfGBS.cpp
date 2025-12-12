@@ -251,6 +251,8 @@ bool SurfGBS::compute_domain_boundary()
 
   //const size_t arclength_res = 200;
 
+  //std::cout << "Arclength sampling: " << (arclength_sampling ? "enabled" : "disabled") << std::endl;
+
   for (size_t loop = 0; loop < num_loops; ++loop) {
     boundary_points[loop].resize(num_sides[loop]);
     boundary_normals[loop].resize(num_sides[loop]);
@@ -270,7 +272,7 @@ bool SurfGBS::compute_domain_boundary()
       Geometry::BSCurve curve_fwd(rib.basisU().degree(), rib.basisU().knots(), cpts_fwd);
       Geometry::BSCurve curve_rev(rib_rev.basisU().degree(), rib_rev.basisU().knots(), cpts_rev);
 
-      const bool reversed  = (rib.eval(0.0, 0.0).normSqr() > rib.eval(1.0, 0.0).normSqr());
+      const bool reversed = (rib.eval(0.0, 0.0).normSqr() > rib.eval(1.0, 0.0).normSqr());
 
       const size_t res = side_res[loop][side];
       boundary_points[loop][side].reserve(res);
@@ -470,7 +472,7 @@ bool SurfGBS::compute_domain_boundary()
     std::vector<std::vector<Ribbon> > perimeter_ribbons(1, ribbons.front());
     scale_perimeter_ribbons(perimeter_ribbons);
     SurfGBS perimeter_gbs;
-    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true, true});
+    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true, arclength_sampling});
     perimeter_gbs.num_segments[0] = num_segments[0];
     perimeter_gbs.side_segment_res[0] = side_segment_res[0];
     perimeter_gbs.compute_domain_boundary();
