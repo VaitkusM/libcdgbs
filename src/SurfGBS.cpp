@@ -25,6 +25,49 @@ double getLength(const Geometry::BSSurface& rib, double u_start = 0.0, double u_
   return length;
 }
 
+double trapezoid(const std::function<double(double)> &f, double a, double b,
+                 size_t n, double s = 0) {
+  if (n == 1)
+    return (f(a) + f(b)) / 2 * (b - a);
+  size_t k = 1 << (n - 2);
+  double h = (b - a) / k;
+  double x = a + h / 2;
+  double sum = 0;
+  for (size_t i = 0; i < k; ++i)
+    sum += f(x + h * i);
+  return (s + h * sum) / 2;
+}
+
+double simpson(const std::function<double(double)> &f, double a, double b,
+               size_t max_iterations, double tolerance) {
+  double s = 0;
+  double s_prev = -std::numeric_limits<double>::max(), st_prev = s_prev;
+  for (size_t i = 1; i <= max_iterations; ++i) {
+    double st = trapezoid(f, a, b, i, st_prev);
+    s = (st * 4 - st_prev) / 3;
+    if (i > 5 && // avoid exiting too early
+        (std::abs(s - s_prev) < tolerance * std::abs(s_prev) ||
+         (s == 0 && s_prev == 0)))
+      break;
+    s_prev = s;
+    st_prev = st;
+  }
+  return s;
+}
+
+// Makes at most 2^(iterations-1)+1 evaluations (with 1 derivative),
+// but exits early if already achieved the specified relative tolerance
+double arclength(const Geometry::BSSurface &curve, double from, double to,
+                 size_t iterations, double tolerance) {
+  auto result =
+    simpson([&](double u) {
+      Geometry::VectorMatrix der;
+      curve.eval(u, 0.0, 1, der);
+      return der[1][0].norm();
+    }, from, to, iterations, tolerance);
+  return result;
+}
+
 
 SurfGBS::SurfGBS()
 {
@@ -206,7 +249,7 @@ bool SurfGBS::compute_domain_boundary()
   boundary_tangents_unnormalized.resize(num_loops);
   boundary_crossderivatives.resize(num_loops);
 
-  const size_t arclength_res = 200;
+  //const size_t arclength_res = 200;
 
   for (size_t loop = 0; loop < num_loops; ++loop) {
     boundary_points[loop].resize(num_sides[loop]);
@@ -217,6 +260,18 @@ bool SurfGBS::compute_domain_boundary()
     domain_boundary_params[loop].resize(num_sides[loop]);
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       const auto& rib = ribbons[loop][side];
+      auto rib_rev = rib; rib_rev.reverseU();
+      Geometry::PointVector cpts_fwd, cpts_rev;
+      const auto nu = rib.numControlPoints()[0];
+      for (size_t i = 0; i < nu; ++i) {
+        cpts_fwd.push_back(rib.controlPoint(i, 0));
+        cpts_rev.push_back(rib_rev.controlPoint(i, 0));
+      }
+      Geometry::BSCurve curve_fwd(rib.basisU().degree(), rib.basisU().knots(), cpts_fwd);
+      Geometry::BSCurve curve_rev(rib_rev.basisU().degree(), rib_rev.basisU().knots(), cpts_rev);
+
+      const bool reversed  = (rib.eval(0.0, 0.0).normSqr() > rib.eval(1.0, 0.0).normSqr());
+
       const size_t res = side_res[loop][side];
       boundary_points[loop][side].reserve(res);
       boundary_normals[loop][side].reserve(res);
@@ -224,27 +279,33 @@ bool SurfGBS::compute_domain_boundary()
       boundary_tangents_unnormalized[loop][side].reserve(res);
       boundary_crossderivatives[loop][side].reserve(res);
       domain_boundary_params[loop][side].reserve(res);
-      if (num_segments[loop][side] > 1) {
-        for (size_t i = 0; i < num_segments[loop][side]; ++i) {
-          const double u_start = double(i) / (num_segments[loop][side]);
-          const double u_end = double(i + 1) / (num_segments[loop][side]);
+
+      const auto ns = num_segments[loop][side];
+      if (ns > 1) {
+        for (size_t i = 0; i < ns; ++i) {
+          const double u_start = double(i) / double(ns);
+          const double u_end = double(i + 1) / double(ns);
+          const double u_start_rev = double(ns - 1 - i) / double(ns);
+          const double u_end_rev = double(ns - 2 - i) / double(ns);
           const size_t seg_res = side_segment_res[loop][side][i];
+          const double seg_len = curve_fwd.arcLength(u_start, u_end);
+          bool seg_reversed = (rib.eval(u_start, 0.0).normSqr() > rib.eval(u_end, 0.0).normSqr());
           for(size_t j = 0; j < seg_res; ++j) {
             if(i > 0 && j == 0) {
               continue; //skip duplicate point at segment boundary
             }
-            const double len = getLength(rib, u_start, u_end, arclength_res);
             double uj = (double(j) / double(seg_res - 1));
             if(arclength_sampling && j > 0 && j < seg_res - 1) { // Find point with arclength u * len by bisection
-              double target_len = uj * len;
+              double target_len = uj * seg_len;
               double low_u = 0.0;
               double high_u = 1.0;
               double mid_u = 0.5;
               const size_t max_iters = 20;
               for(size_t iter = 0; iter < max_iters; ++iter) {
-                mid_u = 0.5 * (low_u + high_u);
+                mid_u = (low_u + high_u) * 0.5;
                 double mid_uj = (1.0 - mid_u) * u_start + mid_u * u_end;
-                double mid_len = getLength(rib, u_start, mid_uj, arclength_res);
+                double mid_len = seg_reversed ? (seg_len - curve_rev.arcLength(1.0 - u_end, 1.0 - mid_uj)) :
+                  curve_fwd.arcLength(u_start, mid_uj);
                 if(mid_len < target_len) {
                   low_u = mid_u;
                 }
@@ -252,9 +313,10 @@ bool SurfGBS::compute_domain_boundary()
                   high_u = mid_u;
                 }
               }
-              uj = mid_u;
+              uj = (low_u + high_u) * 0.5;
             }
-            double u = (1.0 - uj) * u_start + uj * u_end;            Geometry::VectorMatrix duv;
+            double u = (1.0 - uj) * u_start + uj * u_end;            
+            Geometry::VectorMatrix duv;
             auto pt = rib.eval(u, 0.0, 1, duv);
 
             boundary_points[loop][side].push_back({ pt[0], pt[1], pt[2] });
@@ -271,9 +333,15 @@ bool SurfGBS::compute_domain_boundary()
         }
       }
       else {
+        const double len = curve_fwd.arcLength(0.0, 1.0);
+        // std::vector<double> params_forward;
+        // std::vector<double> params_reverse;
+        // std::vector<Vec3> points_forward;
+        // std::vector<Vec3> points_reverse;
+        //std::cout << "Ribbon Loop " << loop << " Side " << side << " Length difference:" << std::abs(len - len_rev) << std::endl;
         for (size_t i = 0; i < res; ++i) {
           double u = double(i) / double(res - 1);
-          const double len = getLength(rib, 0.0, 1.0, arclength_res);
+
           if(arclength_sampling && i > 0 && i < res - 1) { // Find point with arclength u * len by bisection
             double target_len = u * len;
             double low_u = 0.0;
@@ -281,8 +349,9 @@ bool SurfGBS::compute_domain_boundary()
             double mid_u = 0.5;
             const size_t max_iters = 20;
             for(size_t iter = 0; iter < max_iters; ++iter) {
-              mid_u = 0.5 * (low_u + high_u);
-              double mid_len = getLength(rib, 0.0, mid_u, arclength_res);
+              mid_u = (low_u + high_u) * 0.5;
+              double mid_len = reversed ? (len - curve_rev.arcLength(0.0, 1.0 - mid_u)) :
+                curve_fwd.arcLength(0.0, mid_u);
               if(mid_len < target_len) {
                 low_u = mid_u;
               }
@@ -290,10 +359,35 @@ bool SurfGBS::compute_domain_boundary()
                 high_u = mid_u;
               }
             }
-            u = mid_u;
+            u = (low_u + high_u) * 0.5;
           }
-          // std::cout << "Arclength sampling: " << arclength_sampling << std::endl;
-          // std::cout << "Loop " << loop << " Side " << side << " Param " << u << std::endl;
+          // params_forward.push_back(u);
+          // auto pt_fw = rib.eval(u, 0.0);
+          // points_forward.push_back({ pt_fw[0], pt_fw[1], pt_fw[2] });
+
+          // u = double(i) / double(res - 1);
+          // if(arclength_sampling && i > 0 && i < res - 1) { // Find point with arclength u * len by bisection
+          //   double target_len = u * len_rev;
+          //   double low_u = 0.0;
+          //   double high_u = 1.0;
+          //   double mid_u = 0.5;
+          //   const size_t max_iters = 20;
+          //   for(size_t iter = 0; iter < max_iters; ++iter) {
+          //     mid_u = (low_u + high_u) * 0.5;
+          //     double mid_len = true ? (len - getLength(rib, 0.0, 1.0 - mid_u, arclength_res)) :
+          //       getLength(rib_rev, 0.0, mid_u, arclength_res);
+          //     if(mid_len < target_len) {
+          //       low_u = mid_u;
+          //     }
+          //     else {
+          //       high_u = mid_u;
+          //     }
+          //   }
+          //   u = (low_u + high_u) * 0.5;
+          // }
+          // params_reverse.push_back(1.0 - u);
+          // auto pt_rev = rib.eval(1.0 - u, 0.0);
+          // points_reverse.push_back({ pt_rev[0], pt_rev[1], pt_rev[2] });
 
           Geometry::VectorMatrix duv;
           auto pt = rib.eval(u, 0.0, 1, duv);
@@ -309,6 +403,15 @@ bool SurfGBS::compute_domain_boundary()
           boundary_crossderivatives[loop][side].push_back({ dv[0], dv[1], dv[2] });
           domain_boundary_params[loop][side].push_back(u);
         }
+        // //reverse params_reverse for comparison
+        // std::reverse(params_reverse.begin(), params_reverse.end());
+        // std::reverse(points_reverse.begin(), points_reverse.end());
+        // for(size_t i = 0; i < params_forward.size(); ++i) {
+        //   std::cout << "Parameterization mismatch at Loop " << loop << " Side " << side << " Index " << i 
+        //     << ": " << std::abs(params_forward[i] - params_reverse[i]) << std::endl;
+        //   std::cout << "Position mismatch at Loop " << loop << " Side " << side << " Index " << i 
+        //     << ": " << (points_forward[i] - points_reverse[i]).norm() << std::endl;
+        // }
       }
     }
 
