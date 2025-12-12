@@ -272,7 +272,11 @@ bool SurfGBS::compute_domain_boundary()
       Geometry::BSCurve curve_fwd(rib.basisU().degree(), rib.basisU().knots(), cpts_fwd);
       Geometry::BSCurve curve_rev(rib_rev.basisU().degree(), rib_rev.basisU().knots(), cpts_rev);
 
-      const bool reversed = (rib.eval(0.0, 0.0).normSqr() > rib.eval(1.0, 0.0).normSqr());
+      // Determine fixed orientation by lexicographic order of endpoints
+      const auto p_start = rib.eval(0.0, 0.0);
+      const auto p_end = rib.eval(1.0, 0.0);
+      const bool reversed = (std::tie(p_start[0], p_start[1], p_start[2]) < std::tie(p_end[0], p_end[1], p_end[2])); 
+      //(rib.eval(0.0, 0.0).normSqr() > rib.eval(1.0, 0.0).normSqr());
 
       const size_t res = side_res[loop][side];
       boundary_points[loop][side].reserve(res);
@@ -291,7 +295,10 @@ bool SurfGBS::compute_domain_boundary()
           const double u_end_rev = double(ns - 2 - i) / double(ns);
           const size_t seg_res = side_segment_res[loop][side][i];
           const double seg_len = curve_fwd.arcLength(u_start, u_end);
-          bool seg_reversed = (rib.eval(u_start, 0.0).normSqr() > rib.eval(u_end, 0.0).normSqr());
+          const auto p_seg_start = rib.eval(u_start, 0.0);
+          const auto p_seg_end = rib.eval(u_end, 0.0);
+          const bool seg_reversed = (std::tie(p_seg_start[0], p_seg_start[1], p_seg_start[2]) < std::tie(p_seg_end[0], p_seg_end[1], p_seg_end[2])); 
+          //bool seg_reversed = (rib.eval(u_start, 0.0).normSqr() > rib.eval(u_end, 0.0).normSqr());
           for(size_t j = 0; j < seg_res; ++j) {
             if(i > 0 && j == 0) {
               continue; //skip duplicate point at segment boundary
