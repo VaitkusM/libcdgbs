@@ -161,6 +161,7 @@ namespace libcdgbs {
     static double calc_inner_loop_scale(const std::vector<std::vector<Eigen::Vector3d>>& loop, const std::vector<std::vector<Eigen::Vector3d>>& normals, const std::vector<std::vector<Eigen::Vector3d>>& tangents);
     double calc_inner_loop_scale(size_t loop) const;
     void resolve_self_intersections(size_t max_iter = 4);
+    void position_inner_loops();
 
     void merge_smooth_corners();
     bool c1_merge = false;

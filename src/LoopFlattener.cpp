@@ -1,6 +1,7 @@
 #include "libcdgbs/LoopFlattener.hpp"
 #include "libcdgbs/GeomUtil.hpp"
 #include <iostream>
+#include <Eigen/Cholesky>
 using namespace libcdgbs;
 using namespace GeomUtil;
 
@@ -9,6 +10,13 @@ using Vec2 = Eigen::Vector2d;
 using SubCurve3D = std::vector<Vec3>;
 using Curve3D = std::vector<SubCurve3D>;
 using Curves3D = std::vector<Curve3D>;
+using Loop2D = LoopFlattener::Loop2D;
+using DistConstraint = LoopFlattener::DistConstraint;
+
+using Eigen::Vector2d;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+
 
 void LoopFlattener::getGeodesicCurvatures(
   const SubCurve3D& curve_pts,
@@ -288,4 +296,247 @@ Curve3D LoopFlattener::closeLoop(
   }
 
   return closed_loop;
+}
+
+
+static inline Eigen::Matrix2d Rot(double th) 
+{
+  double c = std::cos(th), s = std::sin(th);
+  Eigen::Matrix2d R;
+  R << c, -s,
+        s,  c;
+  return R;
+}
+
+double LoopFlattener::sigmoid(double u) 
+{
+  // numerically stable sigmoid
+  if (u >= 0.0) {
+    double e = std::exp(-u);
+    return 1.0 / (1.0 + e);
+  } else {
+    double e = std::exp(u);
+    return e / (1.0 + e);
+  }
+}
+
+Vector2d LoopFlattener::transformPoint(const Loop2D& L, int k) 
+{
+  const Vector2d& p = L.ref[k];
+  if (L.fixed) return p;
+  const double s = LoopFlattener::sigmoid(L.u);
+  return s * Rot(L.theta) * p + Vector2d(L.tx, L.ty);
+}
+
+// 2x4 Jacobian of transformed point wrt [tx, ty, theta, u]
+static inline Eigen::Matrix<double,2,4> dPoint_dParams(const Loop2D& L, int k) 
+{
+  Eigen::Matrix<double,2,4> J;
+  J.setZero();
+  if (L.fixed) return J;
+
+  const Vector2d& p = L.ref[k];
+  const double s = LoopFlattener::sigmoid(L.u);
+  const double ds_du = s * (1.0 - s);
+  const Eigen::Matrix2d R = Rot(L.theta);
+
+  J.col(0) = Vector2d(1.0, 0.0); // d/dtx
+  J.col(1) = Vector2d(0.0, 1.0); // d/dty
+
+  Eigen::Matrix2d K; // 90deg rot operator
+  K << 0.0, -1.0,
+       1.0,  0.0;
+  J.col(2) = s * (R * (K * p));   // d/dtheta
+  J.col(3) = ds_du * (R * p);         // d/du
+
+  return J;
+}
+
+struct VarIndexing {
+    std::vector<int> offset; // per loop: -1 if fixed, else starting index
+    int nvars = 0;
+};
+
+static VarIndexing buildIndexing(const std::vector<Loop2D>& loops) 
+{
+  VarIndexing VI;
+  VI.offset.assign(loops.size(), -1);
+  int off = 0;
+  for (int i = 0; i < (int)loops.size(); ++i) {
+    if (!loops[i].fixed) {
+      VI.offset[i] = off;
+      off += 4;
+    }
+  }
+  VI.nvars = off;
+  return VI;
+}
+
+static double cost(const std::vector<Loop2D>& loops,
+                   const std::vector<DistConstraint>& C,
+                   bool relative = true) 
+{
+  double sse = 0.0;
+  for (const auto& c : C) {
+    Vector2d a = LoopFlattener::transformPoint(loops[c.loopA], c.idxA);
+    Vector2d b = LoopFlattener::transformPoint(loops[c.loopB], c.idxB);
+    auto d_target = c.targetDist;
+    if(d_target < 1e-8) d_target = 1e-8; // avoid singularity
+    double r = (a - b).norm() - d_target;
+    if(relative) {
+      r /= d_target; // for clarity
+    }
+    sse += r * r;
+  }
+  return sse;
+}
+
+static void applyStep(std::vector<Loop2D>& loops, const VarIndexing& VI,
+                      const VectorXd& dx, double alpha) 
+{
+  for (int i = 0; i < (int)loops.size(); ++i) {
+    int off = VI.offset[i];
+    if (off < 0) continue;
+    loops[i].tx    += alpha * dx[off + 0];
+    loops[i].ty    += alpha * dx[off + 1];
+    loops[i].theta += 0; //alpha * dx[off + 2];
+    loops[i].u     += alpha * dx[off + 3];
+
+    // Optional: keep theta in a reasonable range (not required, but helps debugging)
+    if (loops[i].theta >  M_PI) loops[i].theta -= 2.0 * M_PI;
+    if (loops[i].theta < -M_PI) loops[i].theta += 2.0 * M_PI;
+  }
+}
+
+// Damped Gauss–Newton (LM-style) with simple backtracking
+bool LoopFlattener::solveHolePlacements(std::vector<Loop2D>& loops,
+                                        const std::vector<DistConstraint>& constraints,
+                                        int maxIters,
+                                        double lambda0,
+                                        double tolStep,
+                                        double tolCostRel,
+                                        bool relative) 
+{
+  VarIndexing VI = buildIndexing(loops);
+  const int n = VI.nvars;
+  if (n == 0) return true;
+
+  double lambda = lambda0;
+  double oldCost = cost(loops, constraints, relative);
+
+  // std::cout << " Iter " << -1 << ": cost = " << oldCost << ", lambda = " << lambda << std::endl;
+  // // std::cout << "  Step norm = " << dx.norm() << ", alpha = " << alpha << std::endl;
+  // // std::cout << "  Params:";
+  // for (int i = 0; i < (int)loops.size(); ++i) {
+  //   if (!loops[i].fixed) {
+  //     std::cout << "   Loop " << i << ": t = (" << loops[i].tx << ", " << loops[i].ty << "); theta = " << loops[i].theta << "; s = " << sigmoid(loops[i].u) << std::endl;
+  //   }
+  // }
+
+  for (int it = 0; it < maxIters; ++it) {
+    MatrixXd H = MatrixXd::Zero(n, n);
+    VectorXd g = VectorXd::Zero(n);
+
+    // Build normal equations H = J^T J, g = J^T r
+    for (const auto& c : constraints) {
+      const Loop2D& LA = loops[c.loopA];
+      const Loop2D& LB = loops[c.loopB];
+
+      Vector2d xa = transformPoint(LA, c.idxA);
+      Vector2d xb = transformPoint(LB, c.idxB);
+
+      Vector2d v = xa - xb;
+      double dist = v.norm();
+      if (dist < 1e-12) dist = 1e-12;
+      Vector2d u = v / dist;
+
+      double r = dist - c.targetDist;
+
+      Eigen::RowVector4d JrA = Eigen::RowVector4d::Zero();
+      Eigen::RowVector4d JrB = Eigen::RowVector4d::Zero();
+
+      int offA = VI.offset[c.loopA];
+      int offB = VI.offset[c.loopB];
+
+      if (!LA.fixed) {
+        auto Jxa = dPoint_dParams(LA, c.idxA);      // 2x4
+        for (int j = 0; j < 4; ++j) JrA[j] = u.dot(Jxa.col(j));
+      }
+      if (!LB.fixed) {
+        auto Jxb = dPoint_dParams(LB, c.idxB);      // 2x4
+        for (int j = 0; j < 4; ++j) JrB[j] = -u.dot(Jxb.col(j));
+      }
+
+      // r_rel = (dist - di)/di  (same as dist/di - 1)
+      if(relative) {
+        const double dmin = 1e-8; // choose based on your scale; must be > 0
+        double di  = std::max(c.targetDist, dmin);
+        double inv = 1.0 / di;
+
+        r   *= inv;
+        JrA *= inv;
+        JrB *= inv;
+      }
+
+      if (offA >= 0) {
+        g.segment<4>(offA) += JrA.transpose() * r;
+        H.block<4,4>(offA, offA) += JrA.transpose() * JrA;
+      }
+      if (offB >= 0) {
+        g.segment<4>(offB) += JrB.transpose() * r;
+        H.block<4,4>(offB, offB) += JrB.transpose() * JrB;
+      }
+      if (offA >= 0 && offB >= 0) {
+        H.block<4,4>(offA, offB) += JrA.transpose() * JrB;
+        H.block<4,4>(offB, offA) += JrB.transpose() * JrA;
+      }
+    }
+
+    // Damping: (H + lambda I) dx = -g  (classic LM-style “damped least squares”) :contentReference[oaicite:1]{index=1}
+    MatrixXd Hd = H;
+    Hd.diagonal().array() += lambda;
+
+    VectorXd dx = Hd.ldlt().solve(-g); // Eigen’s LDLT solver for symmetric systems :contentReference[oaicite:2]{index=2}
+    if (!dx.allFinite()) {
+      lambda *= 10.0;
+      continue;
+    }
+
+    if (dx.norm() < tolStep) return true;
+
+    // Backtracking line search on the step
+    const std::vector<Loop2D> saved = loops;
+    bool accepted = false;
+    double alpha = 1.0;
+
+    for (int ls = 0; ls < 12; ++ls) {
+      loops = saved;
+      applyStep(loops, VI, dx, alpha);
+
+      double newCost = cost(loops, constraints, relative);
+      if (newCost <= oldCost) {
+        double rel = std::abs(oldCost - newCost) / std::max(1.0, oldCost);
+        oldCost = newCost;
+        lambda = std::max(lambda * 0.3, 1e-12);
+        accepted = true;
+        if (rel < tolCostRel) return true;
+        break;
+      }
+      alpha *= 0.5;
+    }
+
+    if (!accepted) {
+      loops = saved;
+      lambda *= 10.0; // increase damping when we cannot find a decreasing step
+    }
+    // std::cout << " Iter " << it << ": cost = " << oldCost << ", lambda = " << lambda << std::endl;
+    // // std::cout << "  Step norm = " << dx.norm() << ", alpha = " << alpha << std::endl;
+    // // std::cout << "  Params:";
+    // for (int i = 0; i < (int)loops.size(); ++i) {
+    //   if (!loops[i].fixed) {
+    //     std::cout << "   Loop " << i << ": t = (" << loops[i].tx << ", " << loops[i].ty << "); theta = " << loops[i].theta << "; s = " << sigmoid(loops[i].u) << std::endl;
+    //   }
+    // }
+  }
+  return false; // max iters reached
 }

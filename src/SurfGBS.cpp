@@ -521,7 +521,10 @@ bool SurfGBS::compute_domain_boundary()
       // }
       GeomUtil::shiftByVector(domain_boundary_curves[loop], cog);
     }
-    if(global_inner_loop_scale < 1.0) {
+    if(global_inner_loop_scale <= 0.0) {
+      position_inner_loops();
+    }
+    else if(global_inner_loop_scale < 1.0) {
       // Scaling down inner loops
       for(size_t loop = 1; loop < num_loops; ++loop) {
         const double scale = global_inner_loop_scale;
@@ -539,6 +542,9 @@ bool SurfGBS::compute_domain_boundary()
     }
 
   }
+
+
+
 
   if (debug_outputs) {
     writeLoops(domain_boundary_curves, "boundary_uv_1.obj");
@@ -1069,6 +1075,180 @@ void SurfGBS::resolve_self_intersections(size_t max_iter)
     }
   } while (self_intersection && ++num_iters < max_iter);
 }
+
+void SurfGBS::position_inner_loops()
+{
+  if( num_loops <= 1) {
+    return;
+  }
+  std::vector<SubCurve3D> loops_3D(num_loops);
+  std::vector<SubCurve3D> crossderiv_3D(num_loops);
+  std::vector<LoopFlattener::Loop2D> loops_2D(num_loops);
+
+  std::vector<LoopFlattener::DistConstraint> constraints;
+
+  // Collecting points for each loop
+  for( size_t loop = 0; loop < num_loops; ++loop) {
+    const auto& curve_loop_3D = boundary_points[loop];
+    const auto& curve_crossderiv_3D = boundary_crossderivatives[loop];
+    const auto& curve_loop_2D = domain_boundary_curves[loop];
+
+    loops_2D[loop].fixed = (loop == 0); // Fixing outer loop
+    for(size_t side = 0; side < num_sides[loop]; ++side) {
+      const auto& curve_3D = curve_loop_3D[side];
+      const auto& crossderiv = curve_crossderiv_3D[side];
+      const auto& curve_2D = curve_loop_2D[side];
+      for(size_t i = 0; i < curve_3D.size(); ++i) {
+        loops_3D[loop].push_back(curve_3D[i]);
+        crossderiv_3D[loop].push_back(crossderiv[i]);
+        loops_2D[loop].ref.push_back({curve_2D[i].x(), curve_2D[i].y()});
+      }
+    }
+  }
+
+  std::map<std::array<size_t, 4>, bool> constraint_found;
+  // Collecting distance constraints between loops
+  for(size_t loop = 1; loop < num_loops; ++loop) {
+    const auto& inner_loop_3D = loops_3D[loop];
+    const auto& inner_crossderiv_3D = crossderiv_3D[loop];
+    const auto& inner_loop_2D = loops_2D[loop];
+
+    // Adding diameter constraints within the same loop
+    const size_t num_inner_pts = inner_loop_2D.ref.size();
+    for(size_t i = 0; i < num_inner_pts; i = i + 5) {
+      size_t j = (i + num_inner_pts / 2) % num_inner_pts;
+      if(i == j) {
+        continue;
+      }
+      if(constraint_found.find({loop, i, loop, j}) != constraint_found.end()) {
+        continue;
+      }
+      const auto& pt_i = inner_loop_3D[i];
+      const auto& pt_j = inner_loop_3D[j];
+      const double arclen = (pt_i - pt_j).norm();
+      double dist = arclen;
+      LoopFlattener::DistConstraint constraint;
+      constraint.loopA = loop;
+      constraint.loopB = loop;
+      constraint.idxA = i;
+      constraint.idxB = j;
+      constraint.targetDist = dist; 
+      constraints.push_back(constraint);
+      constraint_found[{loop, i, loop, j}] = true;
+    }
+
+    for(size_t other_loop = 0; other_loop < num_loops; ++other_loop) {
+      if(other_loop == loop) {
+        continue;
+      }
+      const auto& outer_loop_3D = loops_3D[other_loop];
+      const auto& outer_crossderiv_3D = crossderiv_3D[other_loop];
+      const auto& outer_loop_2D = loops_2D[other_loop];
+      for(size_t i = 0; i < inner_loop_2D.ref.size(); ++i) {
+        // Finding closest point on outer loop
+        double min_dist = std::numeric_limits<double>::max();
+        Eigen::Vector3d closest_pt;
+        size_t j_closest = 0;
+        const auto& pt_inner = inner_loop_3D[i];
+        for(size_t j = 0; j < outer_loop_2D.ref.size(); ++j) {
+          if(constraint_found.find({loop, i, other_loop, j}) != constraint_found.end()) {
+            continue;
+          }
+          const auto& pt_outer = outer_loop_3D[j];
+          // Compute distance from inner to outer loop by cubic Hermite spline arclength
+          const Eigen::Vector3d cd_inner = inner_crossderiv_3D[i];
+          const Eigen::Vector3d cd_outer = outer_crossderiv_3D[j];
+          auto spline = Geometry::BSCurve(
+            3, 
+            { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, 
+            { 
+              {pt_inner[0], pt_inner[1], pt_inner[2]}, 
+              { (pt_inner + cd_inner)[0], (pt_inner + cd_inner)[1], (pt_inner + cd_inner)[2]}, 
+              { (pt_outer + cd_outer)[0], (pt_outer + cd_outer)[1], (pt_outer + cd_outer)[2]}, 
+              {pt_outer[0], pt_outer[1], pt_outer[2]} 
+            }
+          ); // Constructing a cubic Hermite
+          const double arclen = spline.arcLength(0.0, 1.0);
+          // Using Euclidean distance for now
+
+          double dist = arclen; //(pt_inner - pt_outer).norm();
+          if(dist < min_dist) {
+            min_dist = dist;
+            closest_pt = pt_outer;
+            j_closest = j;
+          }
+        }
+        LoopFlattener::DistConstraint constraint;
+        constraint.loopA = loop;
+        constraint.loopB = other_loop;
+        constraint.idxA = i;
+        constraint.idxB = j_closest;
+        constraint.targetDist = min_dist; // Keeping some margin
+        constraints.push_back(constraint);
+        constraint_found[{loop, i, other_loop, j_closest}] = true;
+        // // Exporting spline for visualization
+        // const auto& pt_outer = outer_loop_3D[j_closest];
+        // const auto cd_inner = inner_crossderiv_3D[i];
+        // const auto cd_outer = outer_crossderiv_3D[j_closest];
+        // auto spline = Geometry::BSCurve(
+        //   3, 
+        //   { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 }, 
+        //   { 
+        //     {pt_inner[0], pt_inner[1], pt_inner[2]}, 
+        //     { (pt_inner + cd_inner)[0], (pt_inner + cd_inner)[1], (pt_inner + cd_inner)[2]}, 
+        //     { (pt_outer + cd_outer)[0], (pt_outer + cd_outer)[1], (pt_outer + cd_outer)[2]}, 
+        //     {pt_outer[0], pt_outer[1], pt_outer[2]} 
+        //   }
+        // ); // Constructing a cubic Hermite
+        // writeLoops( { { {pt_inner, pt_inner + cd_inner, pt_outer + cd_outer, pt_outer} } }, "constraint_loop" + std::to_string(loop) + "_pt" + std::to_string(i) + 
+        //   "_to_loop" + std::to_string(other_loop) + "_pt" + std::to_string(j_closest) + ".obj");
+      }
+    }
+  }
+
+  // // Printing contstraints
+  // std::cout << "Distance constraints between loops:" << std::endl;
+  // for( const auto& constraint : constraints) {
+  //   std::cout << "  Loop " << constraint.loopA << " point " << constraint.idxA 
+  //     << " to Loop " << constraint.loopB << " point " << constraint.idxB 
+  //     << " target distance: " << constraint.targetDist << std::endl;
+  // }
+
+  LoopFlattener::solveHolePlacements(loops_2D, constraints, 100, 1E-3, 1E-9, 1E-13, true);
+  std::cout << "Positioned inner loops using " << constraints.size() << " distance constraints." << std::endl;
+  std::cout << "New inner loop positions:" << std::endl;
+  for( size_t loop = 0; loop < num_loops; ++loop) {
+    if( loop == 0 ) {
+      continue;
+    }
+    std::cout << "  Loop " << loop << ": t = (" << loops_2D[loop].tx << ", " << loops_2D[loop].ty << "); theta = " << loops_2D[loop].theta << "; s = " << LoopFlattener::sigmoid(loops_2D[loop].u) << std::endl;
+  }
+
+  auto transformed_domain_boundary_curves = domain_boundary_curves;
+  // Transforming domain boundary curves
+  for( size_t loop = 1; loop < num_loops; ++loop) {
+    auto& curve_loop_2D = transformed_domain_boundary_curves[loop];
+    const auto& L = loops_2D[loop];
+    const double scale = LoopFlattener::sigmoid(L.u);
+    const double c = std::cos(L.theta), s = std::sin(L.theta);
+    Eigen::Matrix2d R;
+    R << c, -s,
+         s,  c;
+    const auto t = Eigen::Vector2d(L.tx, L.ty);
+    for(size_t side = 0; side < num_sides[loop]; ++side) {
+      auto& curve_2D = curve_loop_2D[side];
+      for(size_t i = 0; i < curve_2D.size(); ++i) {
+        const auto p = Eigen::Vector2d(curve_2D[i].x(), curve_2D[i].y());
+        auto new_pt = scale*R*p + t;
+        transformed_domain_boundary_curves[loop][side][i] = Eigen::Vector3d(new_pt[0], new_pt[1], 0.0);
+      }
+    }
+  }
+  //writeLoops(transformed_domain_boundary_curves, "transformed_domain_boundary_curves.obj");
+  domain_boundary_curves = transformed_domain_boundary_curves;
+}
+
+
 
 void SurfGBS::merge_smooth_corners() {
   auto new_ribbons = ribbons;
