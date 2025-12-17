@@ -60,7 +60,6 @@ bool SurfGBS::compute_harmonic_parameters()
 
   const size_t num_sides_all = std::accumulate(num_sides.begin(), num_sides.end(), 0);
 
-  const bool three_sided = (num_loops == 1) && (num_sides_all == 3);
   //std::cout << "Computing h-coordinates..." << std::endl;
   { // Compute h-coordinates
     std::vector<VertexHandle> sides_pts;
@@ -83,6 +82,7 @@ bool SurfGBS::compute_harmonic_parameters()
 
     size_t idx = 0;
     for (size_t loop = 0; loop < num_loops; ++loop) {
+      const bool three_sided = (num_sides[loop] == 3);
       for (size_t side = 0; side < num_sides[loop]; ++side) {
         const size_t side_m1 = prev(loop, side);
         const size_t side_p1 = next(loop, side);
@@ -283,6 +283,7 @@ bool SurfGBS::compute_harmonic_parameters()
   //Compute s-coordinates
   //std::cout << "Computing s-coordinates..." << std::endl;
   for (size_t loop = 0; loop < num_loops; ++loop) {
+    const bool three_sided = (num_sides[loop] == 3);
     for (size_t side = 0; side < num_sides[loop]; ++side) {
       // std::cout << "Computing s-coordinates for loop " << loop << " side " << side << std::endl;
       const size_t side_m1 = prev(loop, side);
