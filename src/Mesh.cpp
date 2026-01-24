@@ -1,4 +1,5 @@
 #include "libcdgbs/Mesh.hpp"
+#include "libcdgbs/GeomUtil.hpp"
 
 using namespace libcdgbs;
 
@@ -168,6 +169,131 @@ void Mesh::computeFaceGradientofFunction(
     outGrads[ff.idx()] = gradient;
   }
 }
+
+double cross2D(Mesh::Point v_1, Mesh::Point v_2)
+{
+  return v_1[0] * v_2[1] - v_2[0] * v_1[1];
+}
+
+bool intersect2DLines(
+  Mesh::Point ap, 
+  Mesh::Point ad, 
+  Mesh::Point bp, 
+  Mesh::Point bd, 
+  Mesh::Point &inter, 
+  double &tt, 
+  double &uu
+) {
+
+
+  Mesh::Point diff = bp - ap;
+  double t_num = cross2D(diff, bd);
+  double rxs = cross2D(ad, bd);
+  if (rxs == 0) { //Parallel lines
+    if (t_num == 0) { // Collinear lines
+      double t0 = diff | ad / ad.sqrnorm();
+      double t1 = (bp + bd - ap) | ad / ad.sqrnorm();
+      inter = ap + t0 * ad;
+      return false; //TBD
+    }
+    else { //Parallel, non-intersecting lines
+      return false;
+    }
+  }
+  else { // Non-parallel, intersecting
+    tt = cross2D(diff, bd) / rxs;
+    uu = cross2D(diff, ad) / rxs;
+    inter = ap + tt * ad;
+    return true;
+  }
+}
+
+bool Mesh::traceVectorFieldonFacesfromVertex(
+  const std::vector<Point>&    field, 
+  VertexHandle                 vv, 
+  std::vector<Point>&          integral_curve, 
+  std::vector<HalfedgeHandle>& edges, 
+  bool                         descent
+) const
+{
+  integral_curve.clear();
+  edges.clear();
+  if (field.size() != n_faces()) {
+    return false;
+  }
+  Point pt_curr = point(vv);
+  HalfedgeHandle he_curr = *cvoh_begin(vv);
+  FaceHandle ff_curr = *cvf_begin(vv);
+  double sign = descent ? -1.0 : 1.0;
+  integral_curve.push_back(point(vv));
+  bool found = false;
+  for (auto he : voh_range(vv)) {
+    if (found) {
+      //edges.push_back(opposite_halfedge_handle(he));
+    }
+    if (is_boundary(he)) {
+      edges.push_back(he);//(opposite_halfedge_handle(he));
+      continue;
+    }
+    auto ff = face_handle(he);
+    auto he_next = next_halfedge_handle(he);
+    auto v0 = vv;
+    auto v1 = from_vertex_handle(he_next);
+    auto v2 = to_vertex_handle(he_next);
+
+    auto p0 = point(v0);
+    auto p1 = point(v1);
+    auto p2 = point(v2);
+    auto dv = sign * field[ff.idx()].normalized();
+    Point inter;
+    double s, t;
+    if (intersect2DLines(pt_curr, dv, p1, p2 - p1, inter, s, t) && s > 0 && t > 0 && t <= 1) {
+      integral_curve.push_back(inter);
+      edges.push_back(he_next.next().opp());//(opposite_halfedge_handle(he));
+      edges.push_back(he_next);
+      pt_curr = inter;
+      he_curr = opposite_halfedge_handle(he_next);
+      ff_curr = opposite_face_handle(he_next);
+      found = true;
+    }
+  }
+  while (!is_boundary(he_curr)) {
+    auto he_next = next_halfedge_handle(he_curr);
+    auto he_next_next = next_halfedge_handle(he_next);
+    auto v0 = from_vertex_handle(he_curr);
+    auto v1 = from_vertex_handle(he_next);
+    auto v2 = to_vertex_handle(he_next);
+
+    auto p0 = point(v0);
+    auto p1 = point(v1);
+    auto p2 = point(v2);
+    auto dv = sign * field[ff_curr.idx()].normalized();
+    Point inter;
+    double s, t;
+    if (intersect2DLines(pt_curr, dv, p1, p2 - p1, inter, s, t) && s > 0 && t > 0 && t <= 1) {
+      integral_curve.push_back(inter);
+      edges.push_back(he_next);
+      pt_curr = inter;
+      he_curr = opposite_halfedge_handle(he_next);
+      ff_curr = opposite_face_handle(he_next);
+    }
+    else if (intersect2DLines(pt_curr, dv, p2, p0 - p2, inter, s, t) && s > 0 && t > 0 && t <= 1) {
+      integral_curve.push_back(inter);
+      edges.push_back(he_next_next);
+      pt_curr = inter;
+      he_curr = opposite_halfedge_handle(he_next_next);
+      ff_curr = opposite_face_handle(he_next_next);
+    }
+    else {
+      omerr() << "Line tracing terminated for vertex " << vv.idx() << "!" << std::endl;
+      return false;
+      break;
+    }
+  }
+  return true;
+}
+
+
 
 void Mesh::barycentricCoordinates(
   const Point& pt,

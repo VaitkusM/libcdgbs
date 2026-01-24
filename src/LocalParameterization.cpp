@@ -83,72 +83,114 @@ bool SurfGBS::compute_harmonic_parameters()
     size_t idx = 0;
     for (size_t loop = 0; loop < num_loops; ++loop) {
       const bool three_sided = (num_sides[loop] == 3);
-      for (size_t side = 0; side < num_sides[loop]; ++side) {
-        const size_t side_m1 = prev(loop, side);
-        const size_t side_p1 = next(loop, side);
-        std::vector<VertexHandle> side_pts;
-        std::vector<VertexHandle> side_pts_m1;
-        std::vector<VertexHandle> side_pts_p1;
-        for (size_t i = 0; i < domain_boundary_vertices[loop][side].size(); ++i) {
-          auto vtx = domain_boundary_vertices[loop][side][i];
-          side_pts.push_back(vtx);
-        }
-        for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size(); ++i) {
-          auto vtx = domain_boundary_vertices[loop][side_m1][i];
-          size_t nseg = num_segments[loop][side_m1];
-          if(nseg == 1 || !restrict_params) {
-            if(!use_h_widths || domain_boundary_params[loop][side_m1][i] > 1.0 - h_widths[loop][side][0]) {
-              side_pts_m1.push_back(vtx);
+      const bool is_periodic = periodic[loop];
+      if(!is_periodic){
+        for (size_t side = 0; side < num_sides[loop]; ++side) {
+          const size_t side_m1 = prev(loop, side);
+          const size_t side_p1 = next(loop, side);
+          std::vector<VertexHandle> side_pts;
+          std::vector<VertexHandle> side_pts_m1;
+          std::vector<VertexHandle> side_pts_p1;
+          for (size_t i = 0; i < domain_boundary_vertices[loop][side].size(); ++i) {
+            auto vtx = domain_boundary_vertices[loop][side][i];
+            side_pts.push_back(vtx);
+          }
+          for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size(); ++i) {
+            auto vtx = domain_boundary_vertices[loop][side_m1][i];
+            size_t nseg = num_segments[loop][side_m1];
+            if(nseg == 1 || !restrict_params) {
+              if(!use_h_widths || domain_boundary_params[loop][side_m1][i] > 1.0 - h_widths[loop][side][0]) {
+                side_pts_m1.push_back(vtx);
+              }
+            }
+            else {
+              if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1)/nseg) {
+                side_pts_m1.push_back(vtx);
+              }
             }
           }
-          else {
-            if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1)/nseg) {
-              side_pts_m1.push_back(vtx);
+          for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
+            auto vtx = domain_boundary_vertices[loop][side_p1][i];
+            size_t nseg = num_segments[loop][side_p1];
+            if (nseg == 1 || !restrict_params) {
+              if(!use_h_widths || domain_boundary_params[loop][side_p1][i] <= h_widths[loop][side][1]) {
+                side_pts_p1.push_back(vtx);
+              }
+            }
+            else{
+              if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {
+                side_pts_p1.push_back(vtx);
+              }
             }
           }
-        }
-        for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
-          auto vtx = domain_boundary_vertices[loop][side_p1][i];
-          size_t nseg = num_segments[loop][side_p1];
-          if (nseg == 1 || !restrict_params) {
-            if(!use_h_widths || domain_boundary_params[loop][side_p1][i] <= h_widths[loop][side][1]) {
-              side_pts_p1.push_back(vtx);
-            }
-          }
-          else{
-            if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {
-              side_pts_p1.push_back(vtx);
-            }
-          }
-        }
 
-        addConstraint2RHS(
-          mesh,
-          side_pts,
-          dh,
-          idx,
-          false,
-          0.0,
-          0.0,
-          0.0,
-          true,
-          true
-        );
+          addConstraint2RHS(
+            mesh,
+            side_pts,
+            dh,
+            idx,
+            false,
+            0.0,
+            0.0,
+            0.0,
+            true,
+            true
+          );
 
-        if(restrict_params) {
-          if (num_segments[loop][side_m1] > 1) {
-            addConstraint2RHS(
-              mesh,
-              side_pts_m1,
-              dh,
-              idx,
-              true,
-              0.0,
-              1.0,
-              0.0,
-              true,
-              true
-            );
+          if(restrict_params) {
+            if (num_segments[loop][side_m1] > 1) {
+              addConstraint2RHS(
+                mesh,
+                side_pts_m1,
+                dh,
+                idx,
+                true,
+                0.0,
+                1.0,
+                0.0,
+                true,
+                true
+              );
+            }
+            else {
+              addConstraint2RHS(
+                mesh,
+                side_pts_m1,
+                domain_boundary_params[loop][side_m1],
+                dh,
+                idx,
+                true,
+                true,
+                true
+              );
+            }
+            
+            if(num_segments[loop][side_p1] > 1) {
+              addConstraint2RHS(
+                mesh,
+                side_pts_p1,
+                dh,
+                idx,
+                true,
+                0.0,
+                0.0,
+                1.0,
+                true,
+                true
+              );
+            }
+            else {
+              addConstraint2RHS(
+                mesh,
+                side_pts_p1,
+                domain_boundary_params[loop][side_p1],
+                dh,
+                idx,
+                false,
+                true,
+                true
+              );
+            }
           }
           else {
             addConstraint2RHS(
@@ -161,23 +203,7 @@ bool SurfGBS::compute_harmonic_parameters()
               true,
               true
             );
-          }
-          
-          if(num_segments[loop][side_p1] > 1) {
-            addConstraint2RHS(
-              mesh,
-              side_pts_p1,
-              dh,
-              idx,
-              true,
-              0.0,
-              0.0,
-              1.0,
-              true,
-              true
-            );
-          }
-          else {
+
             addConstraint2RHS(
               mesh,
               side_pts_p1,
@@ -189,71 +215,73 @@ bool SurfGBS::compute_harmonic_parameters()
               true
             );
           }
+
+          // addConstraint2RHS(
+          //   mesh,
+          //   side_pts,
+          //   dh,
+          //   idx,
+          //   false,
+          //   0.0,
+          //   0.0,
+          //   0.0,
+          //   true,
+          //   true
+          // );
+
+          // addConstraint2RHS(
+          //   mesh,
+          //   side_pts_m1,
+          //   dh,
+          //   idx,
+          //   true,
+          //   0.0,
+          //   1.0,
+          //   0.0,
+          //   true,
+          //   true
+          // );
+
+          // addConstraint2RHS(
+          //   mesh,
+          //   side_pts_p1,
+          //   dh,
+          //   idx,
+          //   true,
+          //   0.0,
+          //   0.0,
+          //   1.0,
+          //   true,
+          //   true
+          // );
+
+          ++idx;
         }
-        else {
-          addConstraint2RHS(
-            mesh,
-            side_pts_m1,
-            domain_boundary_params[loop][side_m1],
-            dh,
-            idx,
-            true,
-            true,
-            true
-          );
+      }
+      else {
+        //Periodic loop
+        for(size_t si = 0; si < num_sides[loop]; ++si) {
+          for (size_t side = 0; side < num_sides[loop]; ++side) {
+            std::vector<VertexHandle> side_pts;
+            for (size_t i = 0; i < domain_boundary_vertices[loop][side].size() - 1; ++i) {
+              auto vtx = domain_boundary_vertices[loop][side][i];
+              side_pts.push_back(vtx);
+            }
 
-          addConstraint2RHS(
-            mesh,
-            side_pts_p1,
-            domain_boundary_params[loop][side_p1],
-            dh,
-            idx,
-            false,
-            true,
-            true
-          );
+            addConstraint2RHS(
+              mesh,
+              side_pts,
+              dh,
+              idx + si,
+              false,
+              0.0,
+              0.0,
+              0.0,
+              true,
+              true
+            );
+          }
         }
-
-        // addConstraint2RHS(
-        //   mesh,
-        //   side_pts,
-        //   dh,
-        //   idx,
-        //   false,
-        //   0.0,
-        //   0.0,
-        //   0.0,
-        //   true,
-        //   true
-        // );
-
-        // addConstraint2RHS(
-        //   mesh,
-        //   side_pts_m1,
-        //   dh,
-        //   idx,
-        //   true,
-        //   0.0,
-        //   1.0,
-        //   0.0,
-        //   true,
-        //   true
-        // );
-
-        // addConstraint2RHS(
-        //   mesh,
-        //   side_pts_p1,
-        //   dh,
-        //   idx,
-        //   true,
-        //   0.0,
-        //   0.0,
-        //   1.0,
-        //   true,
-        //   true
-        // );
-
-        ++idx;
       }
     }
 
@@ -284,162 +312,268 @@ bool SurfGBS::compute_harmonic_parameters()
   //std::cout << "Computing s-coordinates..." << std::endl;
   for (size_t loop = 0; loop < num_loops; ++loop) {
     const bool three_sided = (num_sides[loop] == 3);
-    for (size_t side = 0; side < num_sides[loop]; ++side) {
-      // std::cout << "Computing s-coordinates for loop " << loop << " side " << side << std::endl;
-      const size_t side_m1 = prev(loop, side);
-      const size_t side_p1 = next(loop, side);
+    const bool is_periodic = periodic[loop];
+    if(!is_periodic){
+      for (size_t side = 0; side < num_sides[loop]; ++side) {
+        // std::cout << "Computing s-coordinates for loop " << loop << " side " << side << std::endl;
+        const size_t side_m1 = prev(loop, side);
+        const size_t side_p1 = next(loop, side);
+        std::vector<VertexHandle> side_pts;
+        std::vector<VertexHandle> side_pts_m1;
+        std::vector<VertexHandle> side_pts_p1;
+        for (size_t i = 0; i < domain_boundary_vertices[loop][side].size() - 1; ++i) {
+          auto vtx = domain_boundary_vertices[loop][side][i];
+          side_pts.push_back(vtx);
+        }
+        for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size()- 1; ++i) {
+          auto vtx = domain_boundary_vertices[loop][side_m1][i];
+          size_t nseg = num_segments[loop][side_m1];
+          if (nseg == 1 || !restrict_params) {
+            if(!use_h_widths || domain_boundary_params[loop][side_m1][i] > 1.0 - h_widths[loop][side][0]) {
+              side_pts_m1.push_back(vtx);
+            }
+          }
+          else {
+            if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1) / nseg) {
+              side_pts_m1.push_back(vtx);
+            }
+          }
+        }
+        for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
+          auto vtx = domain_boundary_vertices[loop][side_p1][i];
+          size_t nseg = num_segments[loop][side_p1];
+          if (nseg == 1 || !restrict_params) {
+            if(!use_h_widths || domain_boundary_params[loop][side_p1][i] <= h_widths[loop][side][1]) {
+              side_pts_p1.push_back(vtx);
+            }
+          }
+          else {
+            if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {
+              side_pts_p1.push_back(vtx);
+            }
+          }
+        }
+
+        std::vector<VertexHandle> sides_pts;
+        concatenateVectors(
+          side_pts_m1,
+          side_pts,
+          sides_pts,
+          false
+        );
+        concatenateVectors(
+          std::vector<VertexHandle>(sides_pts),
+          side_pts_p1,
+          sides_pts,
+          false
+        );
+
+        // std::cout << "sides_pts size: " << sides_pts.size() << std::endl;
+
+        const size_t num_cons = sides_pts.size();
+        SparseMatrix CC(num_cons, num_vert), KKT;
+        DenseMatrix pp = DenseMatrix::Zero(num_vert, 1);
+        DenseMatrix dd;
+        DenseMatrix rhs, x;
+
+        addConstraint2Matrix(mesh, sides_pts, CC);
+
+        // std::cout << "CC size: " << CC.rows() << " " << CC.cols() << std::endl;
+        // //Printing non-zeroes of CC
+        // for (int k = 0; k < CC.outerSize(); ++k) {
+        //   for (SparseMatrix::InnerIterator it(CC, k); it; ++it) {
+        //     std::cout << "CC[" << it.row() << "][" << it.col() << "] = " << it.value() << std::endl;
+        //   }
+        // }
+
+        addConstraint2RHS(
+          mesh,
+          side_pts_m1,
+          dd,
+          0,
+          false,
+          0.0,
+          0.0,
+          0.0,
+          false,
+          false
+        );
+
+        addConstraint2RHS(
+          mesh,
+          side_pts,
+          domain_boundary_params[loop][side],
+          dd,
+          0,
+          false,
+          false,
+          false
+        );
+
+        addConstraint2RHS(
+          mesh,
+          side_pts_p1,
+          dd,
+          0,
+          false,
+          1.0,
+          0.0,
+          1.0,
+          false,
+          true
+        );
+
+        // addConstraint2RHS(
+        //   mesh,
+        //   side_pts_m1,
+        //   dd,
+        //   0,
+        //   false,
+        //   0.0,
+        //   0.0,
+        //   0.0,
+        //   false,
+        //   false
+        // );
+
+        // addConstraint2RHS(
+        //   mesh,
+        //   side_pts,
+        //   dd,
+        //   0,
+        //   true,
+        //   0.0,
+        //   0.0,
+        //   1.0,
+        //   false,
+        //   false
+        // );
+
+        // addConstraint2RHS(
+        //   mesh,
+        //   side_pts_p1,
+        //   dd,
+        //   0,
+        //   false,
+        //   1.0,
+        //   0.0,
+        //   1.0,
+        //   false,
+        //   true
+        // );
+
+        // //printing elements of dd
+        // for (int k = 0; k < dd.rows(); ++k) {
+        //   std::cout << "dd[" << k << "] = " << dd(k, 0) << std::endl;
+        //   // draw dashes after every 100th element
+        //   if (k % 100 == 99) {
+        //     std::cout << "------------------------" << std::endl;
+        //   }
+        // }
+
+        buildMatrixKKTSystem(QQ, CC, KKT);
+        KKT.makeCompressed();
+        CC.resize(0, 0);
+        //CC.data().squeeze();
+        buildMatrixKKTRHS(pp, dd, rhs);
+        dd.resize(0, 0);
+
+        if (!solveLinearSystem(KKT, rhs, x)) {
+          return false;
+        }
+
+        for (auto v : mesh.vertices()) {
+          s_coords[v.idx()][loop][side] = x(v.idx(), 0);
+        }
+
+      }
+    }
+    else {
+      //Periodic loop
       std::vector<VertexHandle> side_pts;
-      std::vector<VertexHandle> side_pts_m1;
-      std::vector<VertexHandle> side_pts_p1;
-      for (size_t i = 0; i < domain_boundary_vertices[loop][side].size() - 1; ++i) {
-        auto vtx = domain_boundary_vertices[loop][side][i];
-        side_pts.push_back(vtx);
-      }
-      for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size()- 1; ++i) {
-        auto vtx = domain_boundary_vertices[loop][side_m1][i];
-        size_t nseg = num_segments[loop][side_m1];
-        if (nseg == 1 || !restrict_params) {
-          if(!use_h_widths || domain_boundary_params[loop][side_m1][i] > 1.0 - h_widths[loop][side][0]) {
-            side_pts_m1.push_back(vtx);
-          }
-        }
-        else {
-          if (domain_boundary_params[loop][side_m1][i] >= double(nseg - 1) / nseg) {
-            side_pts_m1.push_back(vtx);
-          }
+      for(size_t si = 0; si < num_sides[loop]; ++si) {
+        for (size_t i = 0; i < domain_boundary_vertices[loop][si].size() - 1; ++i) {
+          auto vtx = domain_boundary_vertices[loop][si][i];
+          side_pts.push_back(vtx);
         }
       }
-      for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
-        auto vtx = domain_boundary_vertices[loop][side_p1][i];
-        size_t nseg = num_segments[loop][side_p1];
-        if (nseg == 1 || !restrict_params) {
-          if(!use_h_widths || domain_boundary_params[loop][side_p1][i] <= h_widths[loop][side][1]) {
-            side_pts_p1.push_back(vtx);
-          }
-        }
-        else {
-          if (domain_boundary_params[loop][side_p1][i] <= double(1) / nseg) {
-            side_pts_p1.push_back(vtx);
-          }
-        }
-      }
-
-      std::vector<VertexHandle> sides_pts;
-      concatenateVectors(
-        side_pts_m1,
-        side_pts,
-        sides_pts,
-        false
-      );
-      concatenateVectors(
-        std::vector<VertexHandle>(sides_pts),
-        side_pts_p1,
-        sides_pts,
-        false
-      );
-
-      // std::cout << "sides_pts size: " << sides_pts.size() << std::endl;
-
-      const size_t num_cons = sides_pts.size();
+      const size_t num_cons = side_pts.size();
       SparseMatrix CC(num_cons, num_vert), KKT;
       DenseMatrix pp = DenseMatrix::Zero(num_vert, 1);
       DenseMatrix dd;
       DenseMatrix rhs, x;
 
-      addConstraint2Matrix(mesh, sides_pts, CC);
+      addConstraint2Matrix(mesh, side_pts, CC);
 
-      // std::cout << "CC size: " << CC.rows() << " " << CC.cols() << std::endl;
-      // //Printing non-zeroes of CC
-      // for (int k = 0; k < CC.outerSize(); ++k) {
-      //   for (SparseMatrix::InnerIterator it(CC, k); it; ++it) {
-      //     std::cout << "CC[" << it.row() << "][" << it.col() << "] = " << it.value() << std::endl;
-      //   }
-      // }
+      for(size_t si = 0; si < num_sides[loop]; ++si) {
+        std::vector<VertexHandle> pts;
+        for (size_t i = 0; i < domain_boundary_vertices[loop][si].size() - 1; ++i) {
+          auto vtx = domain_boundary_vertices[loop][si][i];
+          pts.push_back(vtx);
+        }
+        
 
-      addConstraint2RHS(
-        mesh,
-        side_pts_m1,
-        dd,
-        0,
-        false,
-        0.0,
-        0.0,
-        0.0,
-        false,
-        false
+        auto pars = domain_boundary_params[loop][si];
+        const auto u_min = double(si) / double(num_sides[loop]);
+        const auto u_max = double(si + 1) / double(num_sides[loop]);
+
+        for(size_t i = 0; i < pars.size(); ++i) {
+          pars[i] = u_min + pars[i] * (u_max - u_min);
+        }
+
+        addConstraint2RHS(
+          mesh,
+          pts,
+          pars,
+          dd,
+          0,
+          false,
+          false,
+          false
+        );
+      }
+
+      // Adding cut constraints to fix the periodicity
+      std::vector<double> cut_sign(mesh.n_halfedges(), 0);
+      std::vector<Mesh::Point> grad_h;
+      mesh.computeFaceGradientofFunction(
+        [&](Mesh::VertexHandle vh) {
+          return h_coords[vh.idx()][loop][0];
+        },
+        grad_h
       );
 
-      addConstraint2RHS(
-        mesh,
-        side_pts,
-        domain_boundary_params[loop][side],
-        dd,
-        0,
-        false,
-        false,
-        false
-      );
+      std::vector<Mesh::Point>         cut_pts;
+      std::vector<Mesh::HalfedgeHandle> cut_hes;
+      VertexHandle vv = side_pts.front();
+      if (!mesh.traceVectorFieldonFacesfromVertex(
+        grad_h,
+        vv,
+        cut_pts,
+        cut_hes
+      )) {
+        return false;
+      }
 
-      addConstraint2RHS(
-        mesh,
-        side_pts_p1,
-        dd,
-        0,
-        false,
-        1.0,
-        0.0,
-        1.0,
-        false,
-        true
-      );
+      for (auto he : mesh.halfedges()) {
+        cut_sign[he.idx()] = 0;
+      }
+      for (auto he : cut_hes) {
+        cut_sign[he.idx()] = -1;
+        cut_sign[mesh.opposite_halfedge_handle(he).idx()] = 1;
+      }
 
-      // addConstraint2RHS(
-      //   mesh,
-      //   side_pts_m1,
-      //   dd,
-      //   0,
-      //   false,
-      //   0.0,
-      //   0.0,
-      //   0.0,
-      //   false,
-      //   false
-      // );
+      for (auto vv : mesh.vertices()) {
+        for (auto he : mesh.voh_range(vv)) {
+          int sign = cut_sign[he.idx()];
+          int v2_idx = mesh.to_vertex_handle(he).idx();
+          double ww = -QQ.coeffRef(vv.idx(), v2_idx);
+          if (sign != 0) {
+            pp(vv.idx(), 0) += sign * ww*1.0;
+          }
+        }
+      }
 
-      // addConstraint2RHS(
-      //   mesh,
-      //   side_pts,
-      //   dd,
-      //   0,
-      //   true,
-      //   0.0,
-      //   0.0,
-      //   1.0,
-      //   false,
-      //   false
-      // );
-
-      // addConstraint2RHS(
-      //   mesh,
-      //   side_pts_p1,
-      //   dd,
-      //   0,
-      //   false,
-      //   1.0,
-      //   0.0,
-      //   1.0,
-      //   false,
-      //   true
-      // );
-
-      // //printing elements of dd
-      // for (int k = 0; k < dd.rows(); ++k) {
-      //   std::cout << "dd[" << k << "] = " << dd(k, 0) << std::endl;
-      //   // draw dashes after every 100th element
-      //   if (k % 100 == 99) {
-      //     std::cout << "------------------------" << std::endl;
-      //   }
-      // }
 
       buildMatrixKKTSystem(QQ, CC, KKT);
       KKT.makeCompressed();
@@ -453,9 +587,14 @@ bool SurfGBS::compute_harmonic_parameters()
       }
 
       for (auto v : mesh.vertices()) {
-        s_coords[v.idx()][loop][side] = x(v.idx(), 0);
+        double s = x(v.idx(), 0);
+        s = s < 0.0 ? s + 1.0 : s;
+        s = s > 1.0 ? s - 1.0 : s;
+        for(size_t side = 0; side < num_sides[loop]; ++side) {
+          s_coords[v.idx()][loop][side] = s;
+        }
       }
-
+      
     }
   }
 

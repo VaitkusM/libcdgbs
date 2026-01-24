@@ -85,6 +85,7 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   SurfGBS::global_inner_loop_scale = params.global_inner_loop_scale;
   SurfGBS::use_h_widths = params.use_h_widths;
   SurfGBS::arclength_sampling = params.arclength_sampling;
+  SurfGBS::merge_inner_c1 = params.merge_inner_c1;
 
   num_segments.clear();
   num_segments.resize(ribbons.size());
@@ -140,6 +141,7 @@ void SurfGBS::init_data()
   h_widths.clear();
   deform_splines.clear();
   side_deformed.clear();
+  periodic.clear();
 
   num_loops = ribbons.size();
   num_sides.resize(num_loops);
@@ -151,6 +153,7 @@ void SurfGBS::init_data()
   h_widths.resize(num_loops);
   deform_splines.resize(num_loops);
   side_deformed.resize(num_loops);
+  periodic.resize(num_loops, false);
   for (size_t loop = 0; loop < num_loops; ++loop) {
     const size_t ns = ribbons[loop].size();
     num_sides[loop] = ns;
@@ -166,6 +169,9 @@ void SurfGBS::init_data()
       num_cols[loop][side] = ribbons[loop][side].basisU().knots().size() - ribbons[loop][side].basisU().degree() - 1;
       side_res[loop][side] = 100; // default resolution
       side_segment_res[loop][side].resize(num_segments[loop][side], 100); // default resolution per segment
+    }
+    if(merge_inner_c1 && loop > 0) {
+      periodic[loop] = true;
     }
   }
 
@@ -479,7 +485,7 @@ bool SurfGBS::compute_domain_boundary()
     std::vector<std::vector<Ribbon> > perimeter_ribbons(1, ribbons.front());
     scale_perimeter_ribbons(perimeter_ribbons);
     SurfGBS perimeter_gbs;
-    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true, arclength_sampling});
+    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true, arclength_sampling, false});
     perimeter_gbs.num_segments[0] = num_segments[0];
     perimeter_gbs.side_segment_res[0] = side_segment_res[0];
     perimeter_gbs.compute_domain_boundary();
@@ -608,6 +614,7 @@ bool SurfGBS::compute_blend_functions()
     Bf.resize(num_loops);
     for (size_t loop = 0; loop < num_loops; ++loop) {
       Bf[loop].resize(num_sides[loop]);
+      const bool is_periodic = periodic[loop];
       for (size_t side = 0; side < num_sides[loop]; ++side) {
         Bf[loop][side].resize(
           num_rows[loop][side],
@@ -633,14 +640,27 @@ bool SurfGBS::compute_blend_functions()
         Geometry::DoubleVector Bh, Bs;
         Bu.basisFunctions(span_u, s, Bs);
         Bv.basisFunctions(span_v, h, Bh);
+        
+        if(!is_periodic){
+          for (size_t row = 0; row < num_rows[loop][side]; ++row) {
+            for (size_t col = 0; col <= deg_s; ++col) {
+              const size_t ri = row;
+              const size_t ci = col + span_u - deg_s;
+              const double mu = get_mu(v, loop, side, ri, ci);
+              Bf[loop][side][ri][ci] =
+                mu * Bs[col] * Bh[row];
+            }
+          }
+        }
+        else {
+          auto BSp = periodicC1CubicBSplineBasis(s, num_sides[loop]);
+          //Extracting only the relevant C1 periodic cubic basis functions for this side
+          double B1 = BSp[side * 2];
+          double B2 = BSp[side * 2 + 1];
 
-        for (size_t row = 0; row < num_rows[loop][side]; ++row) {
-          for (size_t col = 0; col <= deg_s; ++col) {
-            const size_t ri = row;
-            const size_t ci = col + span_u - deg_s;
-            const double mu = get_mu(v, loop, side, ri, ci);
-            Bf[loop][side][ri][ci] =
-              mu * Bs[col] * Bh[row];
+          for (size_t row = 0; row < num_rows[loop][side]; ++row) {
+            Bf[loop][side][row][1] = B1 * Bh[row];
+            Bf[loop][side][row][2] = B2 * Bh[row];
           }
         }
       }

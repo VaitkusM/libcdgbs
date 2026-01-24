@@ -32,6 +32,7 @@ namespace libcdgbs {
         double global_inner_loop_scale;
         bool use_h_widths;
         bool arclength_sampling;
+        bool merge_inner_c1;
 
         InputParams() : target_length(3.0),
             merge_smooth_corners(true),
@@ -40,7 +41,8 @@ namespace libcdgbs {
             c1_merge(false),
           global_inner_loop_scale(1.0),
           use_h_widths(true),
-          arclength_sampling(true) {
+          arclength_sampling(true),
+          merge_inner_c1(false){
         };
 
         InputParams(double target_length_,
@@ -50,7 +52,8 @@ namespace libcdgbs {
             bool c1_merge_,
             double global_inner_loop_scale_,
             bool use_h_widths_,
-            bool arclength_sampling_
+            bool arclength_sampling_,
+            bool merge_inner_c1_
         ) : target_length(target_length_),
             merge_smooth_corners(merge_smooth_corners_),
             deform_value(deform_value_),
@@ -58,12 +61,14 @@ namespace libcdgbs {
             c1_merge(c1_merge_),
           global_inner_loop_scale(global_inner_loop_scale_),
           use_h_widths(use_h_widths_),
-          arclength_sampling(arclength_sampling_){
+          arclength_sampling(arclength_sampling_),
+          merge_inner_c1(merge_inner_c1_){
         };
     };
 
     std::vector<std::vector<Ribbon> > ribbons;
     std::vector<std::vector<size_t> > num_segments;
+    std::vector<bool> periodic;
 
     Mesh meshDomain;
     Mesh meshSurface;
@@ -110,6 +115,8 @@ namespace libcdgbs {
 
     bool arclength_sampling = true;
 
+    bool merge_inner_c1 = false;
+
     bool debug_outputs = false;
 
     SurfGBS();
@@ -139,6 +146,8 @@ namespace libcdgbs {
 
     bool compute_harmonic_parameters();
     bool compute_deformed_parameters();
+
+    static std::vector<double> periodicC1CubicBSplineBasis(double u, size_t N);
 
     void projectCurves2Domain(
       const std::vector<std::vector<Eigen::Vector3d>>& curves_xyz, 

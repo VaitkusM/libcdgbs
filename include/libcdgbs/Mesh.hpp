@@ -22,6 +22,13 @@ namespace libcdgbs {
       std::function<double(VertexHandle)> func,
       std::vector<Point>& outGrads
     ) const;
+    bool traceVectorFieldonFacesfromVertex(
+      const std::vector<Point>&    field, 
+      VertexHandle                 vv, 
+      std::vector<Point>&          integral_curve, 
+      std::vector<HalfedgeHandle>& edges, 
+      bool                         descent = false
+    ) const;
 
     Point interpolateInFace(FaceHandle f, Point bary) const;
     
