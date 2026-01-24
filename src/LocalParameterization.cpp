@@ -553,7 +553,20 @@ bool SurfGBS::compute_harmonic_parameters()
         cut_pts,
         cut_hes
       )) {
-        return false;
+        // replacing every vector in grad_h with a constant vector perpendicular to the edge at vv and trying again
+        auto edge_dir = mesh.calc_edge_vector(mesh.halfedge_handle(vv)).normalized();
+        edge_dir = (edge_dir.cross(Mesh::Point(0.0, 0.0, 1.0)).normalized());
+        for (auto& g : grad_h) {
+          g = edge_dir;
+        }
+        if(!mesh.traceVectorFieldonFacesfromVertex(
+          grad_h,
+          vv,
+          cut_pts,
+          cut_hes
+        )) {
+          return false;
+        }
       }
       
 
