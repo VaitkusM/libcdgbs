@@ -99,23 +99,29 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   }
 }
 
-[[maybe_unused]]
-static void writeLoops(std::vector<std::vector<std::vector<Eigen::Vector3d> > > loops,
-  std::string filename = "/tmp/boundary.obj") {
+bool SurfGBS::writeLoops(const std::vector<std::vector<std::vector<Eigen::Vector3d> > > &loops,
+  const std::string filename, bool edges) {
   size_t index = 1;
   std::ofstream f(filename);
-  for (const auto& loop : loops)
+  if(!f.is_open()) {
+    return false;
+  }
+  for (const auto& loop : loops) {
     for (const auto& curve : loop) {
       size_t start = index;
       for (const auto& p : curve) {
         f << "v " << p[0] << ' ' << p[1] << ' ' << p[2] << std::endl;
         index++;
       }
-      f << 'l';
-      for (size_t i = start; i < index; ++i)
-        f << ' ' << i;
-      f << std::endl;
+      if(curve.size() > 1 && edges) {
+        f << 'l';
+        for (size_t i = start; i < index; ++i)
+          f << ' ' << i;
+        f << std::endl;
+      }
     }
+  }
+  return true;
 }
 
 void SurfGBS::load_ribbons_and_evaluate(const std::vector<std::vector<Ribbon> >& ribbon_surfs, Mesh& mesh, const InputParams& params, SurfaceType surface_type)

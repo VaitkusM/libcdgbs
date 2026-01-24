@@ -272,7 +272,7 @@ bool SurfGBS::compute_harmonic_parameters()
               mesh,
               side_pts,
               dh,
-              idx + si,
+              idx,
               false,
               0.0,
               0.0,
@@ -281,6 +281,7 @@ bool SurfGBS::compute_harmonic_parameters()
               true
             );
           }
+          ++idx;
         }
       }
     }
@@ -554,6 +555,20 @@ bool SurfGBS::compute_harmonic_parameters()
       )) {
         return false;
       }
+      
+
+
+      // Writing cut curve for debugging
+      std::vector<std::vector<std::vector<Eigen::Vector3d> > > cut_curve_(1);
+      cut_curve_.front().resize(1);
+      for(size_t i = 0; i < cut_pts.size(); ++i) {
+        Eigen::Vector3d p;
+        p << cut_pts[i][0], cut_pts[i][1], cut_pts[i][2];
+        cut_curve_.front().back().push_back(p);
+      }
+      writeLoops(cut_curve_, std::string("cut_curve_" + std::to_string(loop) + ".obj"));
+
+
 
       for (auto he : mesh.halfedges()) {
         cut_sign[he.idx()] = 0;

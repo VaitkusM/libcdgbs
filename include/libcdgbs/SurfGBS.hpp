@@ -135,6 +135,7 @@ namespace libcdgbs {
 
     bool writeOBJ(const Mesh& mesh, const std::string& filename);
     bool writeMGBS(const std::string& filename) const;
+    static bool writeLoops(const std::vector<std::vector<std::vector<Eigen::Vector3d> > >& loops, const std::string filename = "/tmp/boundary.obj", bool edges = true);
 
     bool compute_domain_boundary();
     bool compute_domain_mesh();
