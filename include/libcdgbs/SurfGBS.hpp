@@ -33,6 +33,7 @@ namespace libcdgbs {
         bool use_h_widths;
         bool arclength_sampling;
         bool merge_inner_c1;
+        bool ribbon_init_placement;
 
         InputParams() : target_length(3.0),
             merge_smooth_corners(true),
@@ -42,7 +43,8 @@ namespace libcdgbs {
           global_inner_loop_scale(1.0),
           use_h_widths(true),
           arclength_sampling(true),
-          merge_inner_c1(false){
+          merge_inner_c1(false),
+          ribbon_init_placement(false){
         };
 
         InputParams(double target_length_,
@@ -53,7 +55,8 @@ namespace libcdgbs {
             double global_inner_loop_scale_,
             bool use_h_widths_,
             bool arclength_sampling_,
-            bool merge_inner_c1_
+            bool merge_inner_c1_,
+            bool ribbon_init_placement_
         ) : target_length(target_length_),
             merge_smooth_corners(merge_smooth_corners_),
             deform_value(deform_value_),
@@ -62,7 +65,8 @@ namespace libcdgbs {
           global_inner_loop_scale(global_inner_loop_scale_),
           use_h_widths(use_h_widths_),
           arclength_sampling(arclength_sampling_),
-          merge_inner_c1(merge_inner_c1_){
+          merge_inner_c1(merge_inner_c1_),
+          ribbon_init_placement(ribbon_init_placement_){
         };
     };
 
@@ -111,11 +115,15 @@ namespace libcdgbs {
 
     double global_inner_loop_scale = 1.0;
 
+    std::vector<std::vector<double> > init_placement_scales;
+
     bool use_h_widths = true;
 
     bool arclength_sampling = true;
 
     bool merge_inner_c1 = false;
+
+    bool ribbon_init_placement = false;
 
     bool debug_outputs = false;
 
@@ -172,6 +180,8 @@ namespace libcdgbs {
     double calc_inner_loop_scale(size_t loop) const;
     void resolve_self_intersections(size_t max_iter = 4);
     void position_inner_loops();
+
+    void find_init_placement_scales();
 
     void merge_smooth_corners();
     bool c1_merge = false;

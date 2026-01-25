@@ -86,6 +86,7 @@ void SurfGBS::load_ribbons(const std::vector<std::vector<Ribbon> >& ribbon_surfs
   SurfGBS::use_h_widths = params.use_h_widths;
   SurfGBS::arclength_sampling = params.arclength_sampling;
   SurfGBS::merge_inner_c1 = params.merge_inner_c1;
+  SurfGBS::ribbon_init_placement = params.ribbon_init_placement;
 
   num_segments.clear();
   num_segments.resize(ribbons.size());
@@ -491,7 +492,7 @@ bool SurfGBS::compute_domain_boundary()
     std::vector<std::vector<Ribbon> > perimeter_ribbons(1, ribbons.front());
     scale_perimeter_ribbons(perimeter_ribbons);
     SurfGBS perimeter_gbs;
-    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true, arclength_sampling, false});
+    perimeter_gbs.load_ribbons(perimeter_ribbons, {target_length, true, 0.0, true, false, 1.0, true, arclength_sampling, false, false});
     perimeter_gbs.num_segments[0] = num_segments[0];
     perimeter_gbs.side_segment_res[0] = side_segment_res[0];
     perimeter_gbs.compute_domain_boundary();
@@ -1498,6 +1499,18 @@ void SurfGBS::compute_auto_h_widths(double turning_angle, double length_ratio)
   //     std::cout << std::endl;
   //   }
   // }
+}
+
+void SurfGBS::find_init_placement_scales()
+{
+  init_placement_scales.clear();
+  init_placement_scales.resize(num_loops);
+  for(size_t loop = 0; loop < num_loops; ++loop) {
+    init_placement_scales[loop].resize(num_sides[loop], 1.0);
+  }
+
+  // TODO: Implement constant initial scaling based on distance of h = 0.33 points from closest pts on boundary
+  
 }
 
 inline size_t circular_index(size_t i, int offset, size_t n) {
