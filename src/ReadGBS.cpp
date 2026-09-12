@@ -44,9 +44,11 @@ bool SurfGBS::readGBS(const std::string& filename, const InputParams& params)
   in >> ccp(0) >> ccp(1) >> ccp(2);   // <ccp_x> <ccp_y> <ccp_z>
 
   for (size_t side = 0; side < num_sides[0]; ++side) {
-    int degH, degS, nLayers;
-    in >> degH >> degS >> nLayers;
-    // ensure consistency: degH == nLayers-1
+    int degS, degH, nLayers;
+    // Spec order (gbs_format.txt): s-degree, h-degree, layer count.
+    // The s-degree is the U (along-boundary) degree; the vertical
+    // degree follows the layer count (degH is informational).
+    in >> degS >> degH >> nLayers;
     int degV = nLayers - 1;   // vertical degree
     int degU = degS;          // horizontal degree
 
