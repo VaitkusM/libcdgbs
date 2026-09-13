@@ -43,12 +43,14 @@ bool SurfGBS::readGBS(const std::string& filename, const InputParams& params)
   Eigen::Vector3d ccp;
   in >> ccp(0) >> ccp(1) >> ccp(2);   // <ccp_x> <ccp_y> <ccp_z>
 
-  // The trailer (after all sides) can flag the LAST layer of a side
-  // as a "Ribbon CP" row that is NOT part of the blend surface, so the
-  // sides must be buffered before the ribbons are constructed:
-  //   # 
-  //   <per-side multiplier> x n
-  //   <per-side ribbon-CP flag (0/1)> x n
+  // The trailer (after all sides; see gbs_format.txt) can flag the
+  // LAST layer of a side as a "Ribbon CP" row that is NOT part of the
+  // blend surface, so the sides must be buffered before the ribbons
+  // are constructed:
+  //   #
+  //   <RibCP weight> x n
+  //   <RibCP flag (0/1)> x n
+  //   <curve res> <mesh res> <harmonic levels>   (ignored)
   struct RawSide {
     int degU = 3;
     int layers = 1;
@@ -87,16 +89,16 @@ bool SurfGBS::readGBS(const std::string& filename, const InputParams& params)
     }
   }
 
-  // Optional trailer: '#', multipliers, ribbon-CP flags. A flagged
-  // side's last layer is dropped (ignored for now).
+  // Optional trailer: '#', RibCP weights, RibCP flags. A flagged
+  // side's last layer is dropped (Ribbon CPs ignored for now).
   std::vector<int> ribbon_cp(num_sides[0], 0);
   {
     std::string marker;
     if (in >> marker && marker == "#") {
-      std::vector<double> multipliers(num_sides[0], 1.0);
+      std::vector<double> ribcp_weights(num_sides[0], 1.0);
       bool ok = true;
       for (size_t i = 0; ok && i < num_sides[0]; ++i)
-        ok = bool(in >> multipliers[i]);
+        ok = bool(in >> ribcp_weights[i]);
       for (size_t i = 0; ok && i < num_sides[0]; ++i)
         ok = bool(in >> ribbon_cp[i]);
       if (!ok)
