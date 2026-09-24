@@ -182,7 +182,7 @@ namespace libcdgbs {
     //Checking if any vertex is orphaned
     for (auto v : mesh.vertices()) {
       if (mesh.is_isolated(v)) {
-        std::cout << "Orphaned vertex: " << "idx " << v.idx() << ", (x,y,z)" << mesh.point(v) << std::endl;
+        std::cerr << "Orphaned vertex: " << "idx " << v.idx() << ", (x,y,z)" << mesh.point(v) << std::endl;
       }
     }
 

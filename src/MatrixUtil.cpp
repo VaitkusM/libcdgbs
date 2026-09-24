@@ -304,7 +304,7 @@ bool MatrixUtil::solveLinearSystem(
   // std::cout << " DONE!" << std::endl;
 
   if (solver.info() != Eigen::Success) {
-    std::cout << "  !!!ERROR during factorization!!!" << std::endl;
+    std::cerr << "  !!!ERROR during factorization!!!" << std::endl;
     return false;
   }
 
@@ -313,7 +313,7 @@ bool MatrixUtil::solveLinearSystem(
   // std::cout << " DONE!" << std::endl;
 
   if (solver.info() != Eigen::Success) {
-    std::cout << "  !!!ERROR during backsolve!!!" << std::endl;
+    std::cerr << "  !!!ERROR during backsolve!!!" << std::endl;
     return false;
   }
   return true;

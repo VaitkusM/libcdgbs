@@ -455,7 +455,7 @@ bool SurfGBS::compute_domain_boundary()
     avg_n /= num_pts;
     bool flip = loop > 0 && (va.dot(avg_n)) < 0;
     if(flip) {
-      std::cout << "Flipping loop " << loop << " with vector area " << va.transpose() << " and average normal " << avg_n.transpose() << std::endl;
+      if (debug_outputs) std::cout << "Flipping loop " << loop << " with vector area " << va.transpose() << " and average normal " << avg_n.transpose() << std::endl;
     }
 
     developed_boundary_curves[loop] =
@@ -542,7 +542,7 @@ bool SurfGBS::compute_domain_boundary()
       // Scaling down inner loops
       for(size_t loop = 1; loop < num_loops; ++loop) {
         const double scale = global_inner_loop_scale;
-        std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
+        if (debug_outputs) std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
         const auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
         for (auto& sub : domain_boundary_curves[loop]) {
           for (auto& p : sub) {
@@ -602,11 +602,11 @@ bool SurfGBS::compute_domain_mesh()
 bool SurfGBS::compute_local_parameters()
 {
   if (!compute_harmonic_parameters()) {
-    std::cout << "Error computing harmonic parameters" << std::endl;
+    std::cerr << "Error computing harmonic parameters" << std::endl;
     return false;
   }
   if(!compute_deformed_parameters()) {
-    std::cout << "Error computing deformed parameters" << std::endl;
+    std::cerr << "Error computing deformed parameters" << std::endl;
     return false;
   }
 
@@ -1003,7 +1003,7 @@ double SurfGBS::calc_inner_loop_scale(size_t loop) const
       const double R = (cog - cp0).norm();
       const double alpha = 1.0 - delta / R;
       sk += alpha;
-      std::cout << "Loop " << loop << " side " << side << " point " << i 
+      if (debug_outputs) std::cout << "Loop " << loop << " side " << side << " point " << i 
       << " closest to loop " << min_l << " side " << min_s << " point " << min_p 
         << " distance: " << min_d << " arc length: " << al << " delta: " << delta << 
         " R: " << R << " a: " << a <<  " ratio: " << alpha << std::endl;
@@ -1072,7 +1072,7 @@ void SurfGBS::resolve_self_intersections(size_t max_iter)
         continue;
       }
       else {
-        std::cout << "Found self-intersection in loop " << loop << " side " << intersection_side << " at index " << intersection_idx << std::endl;
+        if (debug_outputs) std::cout << "Found self-intersection in loop " << loop << " side " << intersection_side << " at index " << intersection_idx << std::endl;
         self_intersection = true;
       }
       // Eigen::Vector3d dir = (pts[intersection_side][intersection_idx] - GeomUtil::centroid(domain_boundary_curves[loop])).normalized();
@@ -1092,7 +1092,7 @@ void SurfGBS::resolve_self_intersections(size_t max_iter)
       // Scaling down inner loops
       for(size_t loop = 1; loop < num_loops; ++loop) {
         const double scale = scales[std::min(num_iters, size_t(3))];
-        std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
+        if (debug_outputs) std::cout << "Scaling down loop " << loop << " by factor " << scale << std::endl;
         const auto cog = GeomUtil::centroid(domain_boundary_curves[loop]);
         for (auto& sub : domain_boundary_curves[loop]) {
           for (auto& p : sub) {
@@ -1243,13 +1243,15 @@ void SurfGBS::position_inner_loops()
   // }
 
   LoopFlattener::solveHolePlacements(loops_2D, constraints, 100, 1E-3, 1E-9, 1E-13, true);
-  std::cout << "Positioned inner loops using " << constraints.size() << " distance constraints." << std::endl;
-  std::cout << "New inner loop positions:" << std::endl;
-  for( size_t loop = 0; loop < num_loops; ++loop) {
-    if( loop == 0 ) {
-      continue;
+  if (debug_outputs) {
+    std::cout << "Positioned inner loops using " << constraints.size() << " distance constraints." << std::endl;
+    std::cout << "New inner loop positions:" << std::endl;
+    for( size_t loop = 0; loop < num_loops; ++loop) {
+      if( loop == 0 ) {
+        continue;
+      }
+      std::cout << "  Loop " << loop << ": t = (" << loops_2D[loop].tx << ", " << loops_2D[loop].ty << "); theta = " << loops_2D[loop].theta << "; s = " << LoopFlattener::sigmoid(loops_2D[loop].u) << std::endl;
     }
-    std::cout << "  Loop " << loop << ": t = (" << loops_2D[loop].tx << ", " << loops_2D[loop].ty << "); theta = " << loops_2D[loop].theta << "; s = " << LoopFlattener::sigmoid(loops_2D[loop].u) << std::endl;
   }
 
   auto transformed_domain_boundary_curves = domain_boundary_curves;
@@ -1306,7 +1308,7 @@ void SurfGBS::merge_smooth_corners() {
           continue;
         }
         else {
-          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+          if (debug_outputs) std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
         }
         size_t num_segments = num_merged_sides.back() + 1;
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
@@ -1359,7 +1361,7 @@ void SurfGBS::merge_smooth_corners() {
           continue;
         }
         else {
-          std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
+          if (debug_outputs) std::cout << "Merging ribbons at loop " << loop << " sides " << side_m1 << " and " << side << std::endl;
         }
         size_t num_segments = num_merged_sides.back() + num_merged_sides.front();
         Geometry::DoubleVector knots_u, knots_v; // ToDo: Merging non-uniform knotvectors
