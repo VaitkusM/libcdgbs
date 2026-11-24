@@ -57,7 +57,14 @@ cmake --build .
 ### 3. Run the test
 
 ```bash
-./libcdgbs_test
+./libcdgbs_test [example] [options]
+```
+
+Options may be given in any order; `./libcdgbs_test --help` lists them. The
+effective parameters are printed at startup. For example:
+
+```bash
+./libcdgbs_test Pocket --target-length 4 --norestrict --usehwidths
 ```
 
 ---
