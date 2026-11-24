@@ -10,7 +10,10 @@ void printUsage(const char* prog) {
     std::cout
         << "Usage: " << prog << " [example] [options]\n"
         << "\n"
-        << "  example                 example name (default: Concave)\n"
+        << "  example                 input file (default: Concave). The extension\n"
+        << "                          selects the format: .mgbs, .gbs, .cgb, .ngbs,\n"
+        << "                          .gbp or .mlp; without one, these are tried\n"
+        << "                          in that order\n"
         << "\n"
         << "Options, in any order (defaults in brackets):\n"
         << "  --target-length <x>     target edge length of the domain mesh [3]\n"
@@ -134,6 +137,5 @@ int main(int argc, char* argv[]) {
               << "  merge inner c1 " << params.merge_inner_c1 << std::endl;
 
     libcdgbs::Example example;
-    example.say_hello(filename, params);
-    return 0;
+    return example.say_hello(filename, params) ? 0 : 1;
 }

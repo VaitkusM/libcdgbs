@@ -1,7 +1,42 @@
 #include "libcdgbs/Example.hpp"
+#include <algorithm>
+#include <cctype>
+#include <fstream>
 #include <iostream>
 
 namespace libcdgbs {
+  namespace {
+    typedef bool (SurfGBS::*Reader)(const std::string&, const SurfGBS::InputParams&);
+    struct Format {
+      const char* extension;
+      Reader reader;
+    };
+    // Supported input formats; the order is the probing order for names
+    // given without an extension.
+    const Format formats[] = {
+      {".mgbs", &SurfGBS::readMGBS},
+      {".gbs", &SurfGBS::readGBS},
+      {".cgb", &SurfGBS::readCGB},
+      {".ngbs", &SurfGBS::readNGBS},
+      {".gbp", &SurfGBS::readGBP},
+      {".mlp", &SurfGBS::readMLP},
+    };
+
+    // The format whose extension the name ends with (case-insensitive),
+    // or nullptr.
+    const Format* formatOf(const std::string& filename) {
+      const size_t dot = filename.find_last_of('.');
+      if (dot == std::string::npos) { return nullptr; }
+      std::string ext = filename.substr(dot);
+      std::transform(ext.begin(), ext.end(), ext.begin(),
+                     [](unsigned char c) { return char(std::tolower(c)); });
+      for (const Format& f : formats) {
+        if (ext == f.extension) { return &f; }
+      }
+      return nullptr;
+    }
+  }
+
   double bounding_box_diagonal(const Mesh& mesh) {
     double min_x = std::numeric_limits<double>::max();
     double max_x = std::numeric_limits<double>::lowest();
@@ -24,10 +59,39 @@ namespace libcdgbs {
   }
 
 
-  void Example::say_hello(const std::string& filename, const SurfGBS::InputParams& params) {
+  bool Example::say_hello(const std::string& input, const SurfGBS::InputParams& params) {
     gbs = SurfGBS();
     gbs.debug_outputs = true;
-    gbs.readMGBS(filename + ".mgbs", params);
+    // The reader follows the extension. A name without a supported
+    // extension is tried with each of them in turn (.mgbs first, the
+    // former fixed choice). Output files are named after the input
+    // without its extension.
+    std::string filename = input; // without the extension
+    std::string path = input;     // the file to read
+    const Format* format = formatOf(input);
+    if (format) {
+      filename = input.substr(0, input.find_last_of('.'));
+    }
+    else {
+      for (const Format& f : formats) {
+        if (std::ifstream(input + f.extension).good()) {
+          format = &f;
+          path = input + f.extension;
+          break;
+        }
+      }
+      if (!format) {
+        std::cerr << "Error: no input file found for '" << input << "' (tried";
+        for (const Format& f : formats) { std::cerr << " " << f.extension; }
+        std::cerr << ")" << std::endl;
+        return false;
+      }
+    }
+    std::cout << "Reading " << path << std::endl;
+    if (!(gbs.*(format->reader))(path, params)) {
+      std::cerr << "Error: could not read " << path << std::endl;
+      return false;
+    }
     gbs.compute_domain_boundary();
     gbs.compute_domain_mesh();
     gbs.writeOBJ(gbs.meshDomain, filename + ".obj");
@@ -58,5 +122,6 @@ namespace libcdgbs {
     gbs.writeMGBS(filename + "_out.mgbs");
 
     // std::cout << "Hello from libcdgbs!" << std::endl;
+    return true;
   }
 }

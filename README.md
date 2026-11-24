@@ -60,11 +60,13 @@ cmake --build .
 ./libcdgbs_test [example] [options]
 ```
 
-Options may be given in any order; `./libcdgbs_test --help` lists them. The
-effective parameters are printed at startup. For example:
+The input format follows the file extension (`.mgbs`, `.gbs`, `.cgb`,
+`.ngbs`, `.gbp`, `.mlp`); a name without one is tried with each of these in
+turn. Options may be given in any order; `./libcdgbs_test --help` lists
+them. The effective parameters are printed at startup. For example:
 
 ```bash
-./libcdgbs_test Pocket --target-length 4 --norestrict --usehwidths
+./libcdgbs_test Pocket.cgb --target-length 4 --norestrict --usehwidths
 ```
 
 ---
