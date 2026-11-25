@@ -109,13 +109,13 @@ bool SurfGBS::compute_harmonic_parameters()
             auto vtx = domain_boundary_vertices[loop][side_m1][i];
             const double t = domain_boundary_params[loop][side_m1][i];
             const size_t nseg = num_segments[loop][side_m1];
-            // Window width in the parameter: the last segment under
-            // restrict_params, the h-width when enabled, else the
-            // whole side.
-            const bool seg_window = restrict_params && nseg > 1;
-            const double w = seg_window     ? 1.0 / double(nseg)
-                             : use_h_widths ? h_widths[loop][side][0]
-                                            : 1.0;
+            // Window width in the parameter: the h-width when enabled,
+            // else the whole side; on a merged side restrict_params
+            // caps it at the last segment.
+            const double hw = use_h_widths ? h_widths[loop][side][0] : 1.0;
+            const bool seg_window =
+              restrict_params && nseg > 1 && 1.0 / double(nseg) <= hw;
+            const double w = seg_window ? 1.0 / double(nseg) : hw;
             const bool keep =
               seg_window ? (t >= double(nseg - 1) / nseg)
                          : (!use_h_widths ||
@@ -133,10 +133,11 @@ bool SurfGBS::compute_harmonic_parameters()
             auto vtx = domain_boundary_vertices[loop][side_p1][i];
             const double t = domain_boundary_params[loop][side_p1][i];
             const size_t nseg = num_segments[loop][side_p1];
-            const bool seg_window = restrict_params && nseg > 1;
-            const double w = seg_window     ? 1.0 / double(nseg)
-                             : use_h_widths ? h_widths[loop][side][1]
-                                            : 1.0;
+            // As above, with the cap at the first segment.
+            const double hw = use_h_widths ? h_widths[loop][side][1] : 1.0;
+            const bool seg_window =
+              restrict_params && nseg > 1 && 1.0 / double(nseg) <= hw;
+            const double w = seg_window ? 1.0 / double(nseg) : hw;
             const bool keep =
               seg_window ? (t <= 1.0 / double(nseg))
                          : (!use_h_widths ||
@@ -299,7 +300,12 @@ bool SurfGBS::compute_harmonic_parameters()
         for (size_t i = (three_sided ? 1 : 0); i < domain_boundary_vertices[loop][side_m1].size()- 1; ++i) {
           auto vtx = domain_boundary_vertices[loop][side_m1][i];
           size_t nseg = num_segments[loop][side_m1];
-          if (nseg == 1 || !restrict_params) {
+          // The same window as for the h-coordinates: the h-width, capped
+          // at the last segment of a merged side under restrict_params.
+          const double hw = use_h_widths ? h_widths[loop][side][0] : 1.0;
+          const bool seg_window =
+            restrict_params && nseg > 1 && 1.0 / double(nseg) <= hw;
+          if (!seg_window) {
             if(!use_h_widths || domain_boundary_params[loop][side_m1][i] > 1.0 - h_widths[loop][side][0]) {
               side_pts_m1.push_back(vtx);
             }
@@ -313,7 +319,10 @@ bool SurfGBS::compute_harmonic_parameters()
         for (size_t i = 0; i < domain_boundary_vertices[loop][side_p1].size() - (three_sided ? 1 : 0); ++i) {
           auto vtx = domain_boundary_vertices[loop][side_p1][i];
           size_t nseg = num_segments[loop][side_p1];
-          if (nseg == 1 || !restrict_params) {
+          const double hw = use_h_widths ? h_widths[loop][side][1] : 1.0;
+          const bool seg_window =
+            restrict_params && nseg > 1 && 1.0 / double(nseg) <= hw;
+          if (!seg_window) {
             if(!use_h_widths || domain_boundary_params[loop][side_p1][i] <= h_widths[loop][side][1]) {
               side_pts_p1.push_back(vtx);
             }

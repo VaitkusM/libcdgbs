@@ -69,6 +69,12 @@ them. The effective parameters are printed at startup. For example:
 ./libcdgbs_test Pocket.cgb --target-length 4 --norestrict --usehwidths
 ```
 
+The automatic h-widths are fractions of the neighbouring side's curve
+parameter and are also computed for merged (multi-segment) neighbours;
+`--restrict` caps the window on a merged neighbour at its adjacent
+segment. The regression test for this runs with `ctest` in the build
+directory.
+
 ---
 
 ## 🧩 Project Structure

@@ -113,3 +113,20 @@ target_compile_definitions(libcdgbs_test PRIVATE NOMINMAX)
 endif()
 
 target_link_libraries(libcdgbs_test libcdgbs)
+
+# ---- Regression tests (ctest) ----
+enable_testing()
+
+add_executable(libcdgbs_h_widths_test tests/h_widths_test.cpp)
+target_precompile_headers(libcdgbs_h_widths_test REUSE_FROM libcdgbs_test)
+target_include_directories(libcdgbs_h_widths_test
+    PRIVATE
+        ${OPENMESH_SOURCE_DIR}
+        ${LIBGEOM_SOURCE_DIR}
+        ${TRIANGLE_BINARY_DIR}
+)
+if(WIN32)
+target_compile_definitions(libcdgbs_h_widths_test PRIVATE NOMINMAX)
+endif()
+target_link_libraries(libcdgbs_h_widths_test libcdgbs)
+add_test(NAME h_widths COMMAND libcdgbs_h_widths_test)
